@@ -167,3 +167,21 @@ The Options Intelligence module provides advanced derivatives analysis by proces
 #### API Endpoints
 *   `POST /options/refresh-snapshot`: Ingests latest data and returns new signals.
 *   `GET /options/signal`: Retrieves the most recent computed signals for a symbol.
+
+### 9. Decision Engine + Alerts (v1)
+
+The Decision Engine acts as the central brain of the system, fusing inputs from all other modules (Price Model, RL Agent, Sentiment, and Options) into a single confidence-scored decision.
+
+#### Key Features
+*   **Signal Fusion**: Combines multi-modal signals using a weighted heuristic to produce a decision label (`STRONG_BULLISH` to `STRONG_BEARISH`) and a normalized score.
+*   **Automated Alerting**: Triggers alerts when decision confidence crosses the `DECISION_MIN_CONFIDENCE` threshold.
+*   **Persistence**: Stores every fused decision and triggered alert in Postgres for auditing and UI display.
+
+#### CLI Usage
+*   **Compute Decision**: `python -m backend.decision_engine.cli decision-compute --symbol BTCUSDT --interval 5m`
+*   **Recent Alerts**: `python -m backend.decision_engine.cli alerts-recent --symbol BTCUSDT`
+
+#### API Endpoints
+*   `POST /decision/compute`: Triggers a fresh fusion cycle and returns the decision + optional alert.
+*   `GET /decision/latest`: Returns the most recent fused decision for a symbol.
+*   `GET /alerts/recent`: Returns a list of recent alerts across all symbols.

@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     OPTIONS_DATA_SOURCE: str = "stub" # e.g. "nse", "stub"
     OPTIONS_DEFAULT_EXCHANGE: str = "NSE"
 
+    # Decision Engine Settings
+    DECISION_MIN_CONFIDENCE: float = 0.6
+
+    # Alerts Settings
+    ALERT_MIN_IMPORTANCE: float = 0.7
+    ALERT_CHANNELS: Optional[str] = None # Comma-separated, e.g. "desktop,telegram"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

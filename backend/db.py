@@ -93,6 +93,45 @@ class OptionSignal(Base):
     signal_label = Column(String, nullable=True)   # e.g., "CALL_BUILDUP", "PUT_BUILDUP", "NEUTRAL"
     signal_strength = Column(Float, nullable=True) # 0..1
 
+class DecisionRecord(Base):
+    __tablename__ = "decision_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, nullable=False)
+    timestamp = Column(DateTime(timezone=True), index=True, nullable=False)
+
+    decision_label = Column(String, nullable=False)     # e.g., STRONG_BULLISH / BEARISH / NEUTRAL
+    decision_score = Column(Float, nullable=False)      # 0..1
+
+    price_direction = Column(String, nullable=True)     # e.g., UP/DOWN/FLAT
+    price_confidence = Column(Float, nullable=True)
+
+    rl_action = Column(String, nullable=True)           # BUY/SELL/HOLD
+    rl_confidence = Column(Float, nullable=True)
+
+    sentiment_score = Column(Float, nullable=True)
+    sentiment_label = Column(String, nullable=True)
+
+    options_signal_label = Column(String, nullable=True)
+    options_pcr = Column(Float, nullable=True)
+    options_max_pain_strike = Column(Float, nullable=True)
+
+    raw_payload = Column(String, nullable=True)         # JSON string with full fused payload if needed
+
+class AlertRecord(Base):
+    __tablename__ = "alert_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, nullable=False)
+    timestamp = Column(DateTime(timezone=True), index=True, nullable=False)
+
+    alert_type = Column(String, nullable=False)         # e.g., "HIGH_CONFIDENCE_BREAKOUT"
+    message = Column(String, nullable=False)
+    importance = Column(Float, nullable=False)          # 0..1
+    delivered_channels = Column(String, nullable=True)  # e.g., "desktop"
+
 def get_db():
     db = SessionLocal()
     try:
