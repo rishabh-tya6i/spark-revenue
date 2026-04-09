@@ -20,6 +20,15 @@ dependencies = [
     "confluent-kafka>=2.3.0",
     "python-json-logger>=2.0.7",
     "redis>=5.0.0",
+    "torch>=2.1.0",
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "mlflow>=2.12.0",
+    "gymnasium>=0.29.0",
+    "stable-baselines3>=2.3.0",
+    "transformers>=4.40.0",
+    "beautifulsoup4>=4.12.0",
+    "feedparser>=6.0.10",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +36,7 @@ test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.5",
     "fakeredis>=2.23.0",
+    "pytest-mock>=3.12.0",
 ]
 
 [build-system]

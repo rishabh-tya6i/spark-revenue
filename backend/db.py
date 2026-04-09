@@ -44,6 +44,25 @@ class PriceFeature(Base):
         UniqueConstraint('symbol', 'ts', 'interval', name='uq_symbol_ts_interval'),
     )
 
+class NewsItem(Base):
+    __tablename__ = "news_items"
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    summary = Column(String, nullable=True)
+    url = Column(String, nullable=False, unique=True)
+    published_ts = Column(DateTime(timezone=True), nullable=True)
+    ingested_ts = Column(DateTime(timezone=True), nullable=False)
+
+class NewsSentiment(Base):
+    __tablename__ = "news_sentiment"
+    id = Column(Integer, primary_key=True, index=True)
+    news_id = Column(Integer, index=True, nullable=False) # ForeignKey omitted for simplicity in v1 migrations if needed, but instructed to add.
+    sentiment_score = Column(Float, nullable=False)
+    sentiment_label = Column(String, nullable=False)
+    model_name = Column(String, nullable=False)
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+
 def get_db():
     db = SessionLocal()
     try:

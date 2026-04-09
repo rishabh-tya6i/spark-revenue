@@ -83,4 +83,69 @@ Latest features are automatically cached in Redis with a TTL (default 300s). Thi
 pytest
 ```
 Tests for the feature store use `fakeredis` to avoid the need for a live Redis server during CI/CD.
+
+## Price Prediction Model (LSTM v1)
+
+The `price_model` module implements a PyTorch-based LSTM model for near-term price directional prediction.
+
+### Model Details
+- **Architecture**: 1-2 LSTM layers with a final fully connected layer.
+- **Target**: 3-class classification (DOWN, FLAT, UP) based on a log-return threshold over a future horizon.
+- **Inputs**: 60 timesteps (configurable) of features including log returns, RSI, VWAP ratio, and EMA ratios.
+- **Tracking**: Integrated with **MLflow** for experiment tracking and metric logging.
+
+### Training the Model
+To train the model for a specific symbol:
+```bash
+python -m backend.price_model.cli price-model-train --symbol BTCUSDT --interval 5m --epochs 10
+```
+
+### Inference Service
+The inference service provides a REST API for real-time predictions.
+
+Start the service:
+```bash
+uvicorn backend.price_model.app:app --port 8001 --reload
+```
+
+Predict endpoint:
+```bash
+curl -X POST http://localhost:8001/predict/price-path \
+     -H "Content-Type: application/json" \
+     -d '{"symbol": "BTCUSDT", "interval": "5m"}'
+```
+
+## RL Agent (v1)
+
+The `rl` module implements a Reinforcement Learning agent for trading policy generation.
+
+### Agent Details
+- **Algorithm**: Proximal Policy Optimization (**PPO**) from Stable-Baselines3.
+- **Action Space**: `SELL`, `HOLD`, `BUY`.
+- **Observation Space**: Feature vector (log returns, RSI, VWAP/EMA ratios) joined with the agent's current position.
+- **Reward Function**: Incremental portfolio returns corrected for transaction costs.
+
+### Training the RL Agent
+To train the agent for a symbol:
+```bash
+python -m backend.rl.cli rl-train --symbol BTCUSDT --interval 5m
+```
+
+### Action Recommendation Service
+The RL service provides real-time action recommendations based on the trained policy.
+
+Start the service:
+```bash
+uvicorn backend.rl.app:app --port 8002 --reload
+```
+
+Action endpoint:
+```bash
+curl -X POST http://localhost:8002/rl/action \
+     -H "Content-Type: application/json" \
+     -d '{"symbol": "BTCUSDT", "interval": "5m"}'
+```
+
+## Development
+...
 # spark-revenue

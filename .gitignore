@@ -25,9 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.env.*
 .env
-.env.example
 Implementation_Plan.md
 Implementation_Plan_To_Execute.md
 
