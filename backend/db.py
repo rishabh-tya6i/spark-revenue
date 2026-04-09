@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Index, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Index, UniqueConstraint, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
@@ -13,6 +13,7 @@ class OhlcBar(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, index=True, nullable=False, default="5m")
     exchange = Column(String, index=True, nullable=False)
     start_ts = Column(DateTime(timezone=True), nullable=False)
     end_ts = Column(DateTime(timezone=True), nullable=False)
@@ -131,6 +132,30 @@ class AlertRecord(Base):
     message = Column(String, nullable=False)
     importance = Column(Float, nullable=False)          # 0..1
     delivered_channels = Column(String, nullable=True)  # e.g., "desktop"
+
+class BacktestRun(Base):
+    __tablename__ = "backtest_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    strategy_name = Column(String, nullable=False)
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, nullable=False)
+    start_ts = Column(DateTime(timezone=True), nullable=False)
+    end_ts = Column(DateTime(timezone=True), nullable=False)
+    initial_capital = Column(Float, nullable=False)
+    final_capital = Column(Float, nullable=True)
+    status = Column(String, nullable=False, default="PENDING")  # PENDING/RUNNING/COMPLETED/FAILED
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+    completed_ts = Column(DateTime(timezone=True), nullable=True)
+    details = Column(String, nullable=True)  # JSON string for extra config if needed
+
+class BacktestMetric(Base):
+    __tablename__ = "backtest_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    backtest_id = Column(Integer, ForeignKey("backtest_runs.id"), nullable=False)
+    metric_name = Column(String, nullable=False)  # e.g., "win_rate", "max_drawdown", "sharpe"
+    metric_value = Column(Float, nullable=False)
 
 def get_db():
     db = SessionLocal()

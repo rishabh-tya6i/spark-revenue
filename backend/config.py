@@ -53,7 +53,13 @@ class Settings(BaseSettings):
 
     # Alerts Settings
     ALERT_MIN_IMPORTANCE: float = 0.7
+    ALERT_MIN_IMPORTANCE: float = 0.7
     ALERT_CHANNELS: Optional[str] = None # Comma-separated, e.g. "desktop,telegram"
+
+    # Backtesting Settings
+    BACKTEST_INITIAL_CAPITAL: float = 100000.0
+    BACKTEST_TRANSACTION_COST_BPS: float = 10.0
+    BACKTEST_DEFAULT_INTERVAL: str = "5m"
 
     model_config = SettingsConfigDict(
         env_file=".env",

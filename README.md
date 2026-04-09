@@ -185,3 +185,22 @@ The Decision Engine acts as the central brain of the system, fusing inputs from 
 *   `POST /decision/compute`: Triggers a fresh fusion cycle and returns the decision + optional alert.
 *   `GET /decision/latest`: Returns the most recent fused decision for a symbol.
 *   `GET /alerts/recent`: Returns a list of recent alerts across all symbols.
+
+### 10. Backtesting Engine (v1)
+
+The Backtesting Engine allows for the historical simulation of trading strategies using stored OHLC data. It tracks PnL, calculate risk metrics, and persists results for analysis.
+
+#### Key Features
+*   **Historical Replay**: Iterates through past OHLC bars to simulate step-by-step decision making.
+*   **Pluggable Strategies**: Base interface for implementing rule-based or model-driven strategies.
+*   **Performance Metrics**: Automatically calculates Win Rate, Max Drawdown, and annualized Sharpe Ratio.
+*   **Execution Simulation**: Accounts for transaction costs (BPS) and slippage (via spread/commission modeling).
+
+#### CLI Usage
+*   **Run Backtest**: `python -m backend.backtesting.cli backtest-run --symbol BTCUSDT --start-ts 2024-01-01 --end-ts 2024-01-07`
+*   **Show Results**: `python -m backend.backtesting.cli backtest-show --run-id 1`
+
+#### API Endpoints
+*   `POST /backtest/run`: Initiates a new backtest run for a specific symbol and timeframe.
+*   `GET /backtest/run/{run_id}`: Retrieves the status and basic info of a backtest.
+*   `GET /backtest/metrics/{run_id}`: Retrieves detailed performance metrics for a completed run.
