@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     SENTIMENT_MODEL_NAME: str = "ProsusAI/finbert"
     SENTIMENT_BATCH_SIZE: int = 16
 
+    # Options / Derivatives Settings
+    OPTIONS_DATA_SOURCE: str = "stub" # e.g. "nse", "stub"
+    OPTIONS_DEFAULT_EXCHANGE: str = "NSE"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

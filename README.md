@@ -149,3 +149,21 @@ curl -X POST http://localhost:8002/rl/action \
 ## Development
 ...
 # spark-revenue
+
+### 8. Options Intelligence Engine (v1)
+
+The Options Intelligence module provides advanced derivatives analysis by processing option chain data to derive market sentiment and structural levels.
+
+#### Key Features
+*   **Metrics**: Calculates Put-Call Ratio (PCR) and Max Pain strikes.
+*   **Signals**: Identifies "CALL_BUILDUP" and "PUT_BUILDUP" based on OI concentration and PCR trends.
+*   **Ingestion**: Supports synthetic (stubbed) options chain generation for development.
+*   **API**: Real-time snapshot refreshing and signal retrieval.
+
+#### CLI Usage
+*   **Snapshot Ingestion**: `python -m backend.options_intel.cli options-snapshot --symbol NIFTY --expiry 2024-12-26`
+*   **Signal Calculation**: `python -m backend.options_intel.cli options-signal --symbol NIFTY --expiry 2024-12-26`
+
+#### API Endpoints
+*   `POST /options/refresh-snapshot`: Ingests latest data and returns new signals.
+*   `GET /options/signal`: Retrieves the most recent computed signals for a symbol.

@@ -63,6 +63,36 @@ class NewsSentiment(Base):
     model_name = Column(String, nullable=False)
     created_ts = Column(DateTime(timezone=True), nullable=False)
 
+class OptionSnapshot(Base):
+    __tablename__ = "option_snapshots"
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    expiry = Column(DateTime(timezone=True), index=True, nullable=False)
+    strike = Column(Float, index=True, nullable=False)
+    option_type = Column(String, nullable=False) # "CE" or "PE"
+    open_interest = Column(Float, nullable=False)
+    change_in_oi = Column(Float, nullable=True)
+    volume = Column(Float, nullable=True)
+    last_traded_price = Column(Float, nullable=True)
+    timestamp = Column(DateTime(timezone=True), index=True, nullable=False)
+
+    __table_args__ = (
+        Index("idx_opt_symbol_expiry_strike_type_ts", "symbol", "expiry", "strike", "option_type", "timestamp"),
+    )
+
+class OptionSignal(Base):
+    __tablename__ = "option_signals"
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    expiry = Column(DateTime(timezone=True), index=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), index=True, nullable=False)
+    pcr = Column(Float, nullable=True)
+    max_pain_strike = Column(Float, nullable=True)
+    call_oi_total = Column(Float, nullable=True)
+    put_oi_total = Column(Float, nullable=True)
+    signal_label = Column(String, nullable=True)   # e.g., "CALL_BUILDUP", "PUT_BUILDUP", "NEUTRAL"
+    signal_strength = Column(Float, nullable=True) # 0..1
+
 def get_db():
     db = SessionLocal()
     try:
