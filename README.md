@@ -186,21 +186,69 @@ The Decision Engine acts as the central brain of the system, fusing inputs from 
 *   `GET /decision/latest`: Returns the most recent fused decision for a symbol.
 *   `GET /alerts/recent`: Returns a list of recent alerts across all symbols.
 
-### 10. Backtesting Engine (v1)
+### 11. Desktop App (Electron + React, v1)
 
-The Backtesting Engine allows for the historical simulation of trading strategies using stored OHLC data. It tracks PnL, calculate risk metrics, and persists results for analysis.
+The Desktop App provides a unified command center for visualizing the fused decisions, market data, sentiment, and options signals from the backend services.
 
 #### Key Features
-*   **Historical Replay**: Iterates through past OHLC bars to simulate step-by-step decision making.
-*   **Pluggable Strategies**: Base interface for implementing rule-based or model-driven strategies.
-*   **Performance Metrics**: Automatically calculates Win Rate, Max Drawdown, and annualized Sharpe Ratio.
-*   **Execution Simulation**: Accounts for transaction costs (BPS) and slippage (via spread/commission modeling).
+- **Dashboard**: High-level view for a selected symbol (e.g., BTCUSDT) showing the latest fused decision, confidence scores, sentiment headlines, and options indicators (PCR, Max Pain).
+- **Backtesting UI**: Configuration form to run historical simulations and view performance metrics (Win Rate, Sharpe, Max Drawdown) in a clean dashboard.
+- **Alerts Feed**: Real-time list of system-generated alerts triggered when high-confidence signals are detected.
+- **Cross-Platform**: Built with Electron, compatible with macOS, Windows, and Linux.
 
-#### CLI Usage
-*   **Run Backtest**: `python -m backend.backtesting.cli backtest-run --symbol BTCUSDT --start-ts 2024-01-01 --end-ts 2024-01-07`
-*   **Show Results**: `python -m backend.backtesting.cli backtest-show --run-id 1`
+#### Setup & Run
+1. **Prerequisites**: Ensure the backend services are running (default `http://localhost:8000`).
+2. **Install Dependencies**:
+   ```bash
+   cd desktop
+   npm install
+   cd renderer
+   npm install
+   ```
+3. **Run in Development Mode**:
+   ```bash
+   cd desktop
+   npm run dev
+   ```
+4. **Run Tests**:
+   ```bash
+   cd desktop
+   npm run test
+   ```
 
-#### API Endpoints
-*   `POST /backtest/run`: Initiates a new backtest run for a specific symbol and timeframe.
-*   `GET /backtest/run/{run_id}`: Retrieves the status and basic info of a backtest.
-*   `GET /backtest/metrics/{run_id}`: Retrieves detailed performance metrics for a completed run.
+#### Tech Stack
+- **Electron**: Desktop shell.
+- **React + TypeScript**: UI development.
+- **Vite**: Modern frontend bundling.
+- **Axios**: API communication.
+- **Vitest + RTL**: Unit testing.
+
+### 12. Running with Docker
+
+You can spin up the entire backend infrastructure (Postgres, Redis, MLflow, and the unified Backend API) using Docker Compose.
+
+#### Prerequisites
+- Docker and Docker Compose installed.
+
+#### Steps
+1. **Environment Setup**:
+   Ensure `.env` exists at the root (copy from `.env.example`).
+   ```bash
+   cp .env.example .env
+   ```
+2. **Launch Services**:
+   ```bash
+   docker compose up --build
+   ```
+3. **Verify**:
+   - Backend API: `http://localhost:8000/health`
+   - MLflow UI: `http://localhost:5000`
+   - Postgres: `localhost:5432`
+   - Redis: `localhost:6379`
+
+### 13. Continuous Integration (CI)
+
+This repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that automatically runs tests on every push and pull request to `main` or `master`.
+
+- **Backend Job**: Installs dependencies (`pip install .[test]`) and runs Python tests using `pytest` with an in-memory SQLite database.
+- **Frontend Job**: Installs dependencies in `desktop/renderer` and runs frontend unit tests using `vitest`.

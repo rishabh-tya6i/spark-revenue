@@ -169,3 +169,31 @@ Temporary Items
 Implementation_Plan_*.md
 !Implementation_Plan.md
 !Implementation_Plan_To_Execute.md
+
+# Frontend & Electron
+node_modules/
+dist/
+dist-electron/
+out/
+.eslintcache
+*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Electron main compiled files (if using JS output)
+desktop/electron-main/main.js
+desktop/electron-main/main.js.map
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage
+desktop/renderer/coverage/
+
+# Vite
+desktop/renderer/dist/
