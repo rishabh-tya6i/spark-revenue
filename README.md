@@ -252,3 +252,34 @@ This repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) 
 
 - **Backend Job**: Installs dependencies (`pip install .[test]`) and runs Python tests using `pytest` with an in-memory SQLite database.
 - **Frontend Job**: Installs dependencies in `desktop/renderer` and runs frontend unit tests using `vitest`.
+ 
+### 14. Training & Orchestration (Prefect v1)
+ 
+The orchestration layer automates the recurring tasks of data processing and model retraining using Prefect.
+ 
+#### Key Features
+- **Automated Workflows**: Prefect-based flows for retraining both LSTM Price Models and RL Agents across multiple symbols.
+- **Unified Master Flow**: A `daily_training_flow` that sequences model training tasks, suitable for scheduling via cron or Prefect Cloud.
+- **CLI & API**: Trigger training flows via the command line or through a dedicated REST API endpoint.
+- **MLflow Integration**: All training tasks are automatically tracked in MLflow for metric comparison and artifact management.
+ 
+#### CLI Usage
+```bash
+# Train price models for specific symbols
+python -m backend.orchestration.cli train-price-models --symbols BTCUSDT,ETHUSDT --epochs 10
+
+# Train RL agents
+python -m backend.orchestration.cli train-rl-agents --symbols BTCUSDT --episodes 50
+
+# Run the full daily training pipeline
+python -m backend.orchestration.cli run-daily
+```
+ 
+#### API Endpoint
+- `POST /orchestration/run-daily`: Synchronously triggers the master training flow.
+ 
+#### Configuration
+Adjust orchestration settings in `.env`:
+- `TRAIN_SYMBOLS`: Comma-separated list of symbols to include in automated training.
+- `TRAIN_DEFAULT_INTERVAL`: Timeframe to use for training data (e.g., `5m`).
+- `TRAIN_DAILY_RUN_HOUR_UTC`: Preferred hour for the daily master flow.

@@ -7,6 +7,7 @@ from .sentiment.service import router as sentiment_router
 from .options_intel.service import router as options_router
 from .price_model.service import router as price_router
 from .rl.service import router as rl_router
+from .orchestration.app import router as orchestration_router
 
 setup_logging()
 app = FastAPI(title="Spark Revenue AI Trading OS Backend")
@@ -20,6 +21,7 @@ app.include_router(sentiment_router, tags=["sentiment"])
 app.include_router(options_router, tags=["options"])
 app.include_router(price_router, tags=["prediction"])
 app.include_router(rl_router, tags=["rl"])
+app.include_router(orchestration_router, tags=["orchestration"])
 
 @app.get("/health")
 async def health():

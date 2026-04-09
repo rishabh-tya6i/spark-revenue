@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     BACKTEST_INITIAL_CAPITAL: float = 100000.0
     BACKTEST_TRANSACTION_COST_BPS: float = 10.0
     BACKTEST_DEFAULT_INTERVAL: str = "5m"
+    
+    # Training / Orchestration Settings
+    TRAIN_SYMBOLS: Optional[str] = None  # Comma-separated, e.g. "BTCUSDT,ETHUSDT"
+    TRAIN_DEFAULT_INTERVAL: str = "5m"
+    TRAIN_DAILY_RUN_HOUR_UTC: int = 3  # e.g., run at 03:00 UTC
 
     model_config = SettingsConfigDict(
         env_file=".env",
