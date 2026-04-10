@@ -157,6 +157,50 @@ class BacktestMetric(Base):
     metric_name = Column(String, nullable=False)  # e.g., "win_rate", "max_drawdown", "sharpe"
     metric_value = Column(Float, nullable=False)
 
+class ExecutionAccount(Base):
+    __tablename__ = "execution_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)  # e.g., "default"
+    base_currency = Column(String, nullable=False, default="USD")
+    initial_balance = Column(Float, nullable=False)
+    cash_balance = Column(Float, nullable=False)
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+    updated_ts = Column(DateTime(timezone=True), nullable=False)
+
+class ExecutionPosition(Base):
+    __tablename__ = "execution_positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("execution_accounts.id"), nullable=False)
+    symbol = Column(String, index=True, nullable=False)
+    quantity = Column(Float, nullable=False)       # long > 0, short < 0
+    avg_price = Column(Float, nullable=False)      # average fill price
+    updated_ts = Column(DateTime(timezone=True), nullable=False)
+
+class ExecutionOrder(Base):
+    __tablename__ = "execution_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("execution_accounts.id"), nullable=False)
+    symbol = Column(String, index=True, nullable=False)
+    side = Column(String, nullable=False)          # "BUY" or "SELL"
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)          # executed price
+    decision_id = Column(Integer, ForeignKey("decision_records.id"), nullable=True)
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+
+class ExecutionPnL(Base):
+    __tablename__ = "execution_pnl"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("execution_accounts.id"), nullable=False)
+    symbol = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), nullable=False)
+    unrealized_pnl = Column(Float, nullable=False)
+    realized_pnl = Column(Float, nullable=False)
+    equity = Column(Float, nullable=False)         # cash + sum(position market value)
+
 def get_db():
     db = SessionLocal()
     try:

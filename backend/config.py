@@ -66,6 +66,13 @@ class Settings(BaseSettings):
     TRAIN_DEFAULT_INTERVAL: str = "5m"
     TRAIN_DAILY_RUN_HOUR_UTC: int = 3  # e.g., run at 03:00 UTC
 
+    # Execution / Paper Trading Settings
+    EXECUTION_MODE: str = "paper"  # "paper" or "live"
+    EXECUTION_DEFAULT_SYMBOLS: Optional[str] = None
+    EXECUTION_BASE_CURRENCY: str = "USD"
+    EXECUTION_MAX_POSITION_PER_SYMBOL: float = 1.0        # Max units (e.g., 1 BTC)
+    EXECUTION_MAX_NOTIONAL_PER_SYMBOL: float = 20000.0    # In base currency
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

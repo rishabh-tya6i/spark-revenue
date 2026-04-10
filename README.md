@@ -283,3 +283,30 @@ Adjust orchestration settings in `.env`:
 - `TRAIN_SYMBOLS`: Comma-separated list of symbols to include in automated training.
 - `TRAIN_DEFAULT_INTERVAL`: Timeframe to use for training data (e.g., `5m`).
 - `TRAIN_DAILY_RUN_HOUR_UTC`: Preferred hour for the daily master flow.
+ 
+### 15. Execution & Paper Trading (v1)
+ 
+The execution engine provides a simulated environment for paper trading based on decisions and RL actions produced by the system.
+ 
+#### Key Features
+- **Simulated Execution**: Executes "paper" orders locally, tracking cash balances and positions without requiring real broker credentials.
+- **Position Tracking**: Real-time tracking of average entry prices, realized PnL, and unrealized PnL.
+- **Decision Integration**: Directly wires into `DecisionRecord` outputs, allowing the system to "live trade" in simulation mode.
+- **Order History**: Stores all orders and PnL snapshots in Postgres for performance analysis.
+ 
+#### CLI Usage
+```bash
+# Check current portfolio, positions, and equity
+python -m backend.execution.cli execution-status
+
+# Manually apply a trade from a specific decision ID
+python -m backend.execution.cli execution-apply-decision --decision-id 123
+```
+ 
+#### API Endpoints
+- `POST /execution/decision/{decision_id}`: Executes a trade for the given decision.
+- `GET /execution/account`: Returns a complete snapshot of the trading account and positions.
+- `GET /execution/orders`: Lists recent order history.
+ 
+#### Implementation Note
+This engine is designed as a layer over a pluggable "Broker Interface." Future updates will allow toggling `EXECUTION_MODE` to `live` to route these same decisions to Zerodha or Binance.
