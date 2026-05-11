@@ -20,14 +20,12 @@ describe('OperationsPage', () => {
       </SymbolProvider>
     );
 
-    fireEvent.click(screen.getByText('Execute Training Flow'));
+    fireEvent.click(screen.getByText('Run Model Training'));
 
-    await waitFor(() => {
-      expect(orchestrationApi.runTrainTrainable).toHaveBeenCalled();
-      expect(screen.getByText('COMPLETED')).toBeInTheDocument();
-      expect(screen.getByText('RUN: 500')).toBeInTheDocument();
-      expect(screen.getByText('PREPARED')).toBeInTheDocument();
-    });
+    expect(orchestrationApi.runTrainTrainable).toHaveBeenCalled();
+    expect(await screen.findByText('COMPLETED')).toBeInTheDocument();
+    expect(await screen.findByText('RUN ID: 500')).toBeInTheDocument();
+    expect(await screen.findByText(/PREPARED/i)).toBeInTheDocument();
   });
 
   it('triggers inference flow on button click', async () => {
@@ -43,11 +41,9 @@ describe('OperationsPage', () => {
       </SymbolProvider>
     );
 
-    fireEvent.click(screen.getByText('Run All Inferences'));
+    fireEvent.click(screen.getByText('Run Universe Inference'));
 
-    await waitFor(() => {
-      expect(orchestrationApi.runUniverseInference).toHaveBeenCalled();
-      expect(screen.getByText('RUN: 501')).toBeInTheDocument();
-    });
+    expect(orchestrationApi.runUniverseInference).toHaveBeenCalled();
+    expect(await screen.findByText('RUN ID: 501')).toBeInTheDocument();
   });
 });

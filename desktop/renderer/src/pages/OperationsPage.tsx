@@ -9,12 +9,49 @@ import {
 import PageContainer from '../components/layout/PageContainer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import { Play, Brain, Zap, RotateCcw, Loader2 } from 'lucide-react';
+import { Play, Brain, Zap, RotateCcw, Loader2, AlertCircle } from 'lucide-react';
+import { KeyValueGrid, KeyValueItem } from '../components/data/KeyValueGrid';
+import { StatusBadge } from '../components/data/StatusBadge';
+import { SectionHeader } from '../components/data/SectionHeader';
+
+const ResultRenderer: React.FC<{ res: any }> = ({ res }) => {
+  if (!res) return null;
+
+  if (res.error) {
+    return (
+      <div className="glass-panel text-danger" style={{ marginTop: '16px', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <AlertCircle size={16} />
+        <span className="text-sm"><strong>Error:</strong> {res.error}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-panel" style={{ marginTop: '16px', padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <StatusBadge type="run" status={res.status || 'success'} />
+        {res.run_record_id && <span className="text-xs text-muted text-mono">RUN ID: {res.run_record_id}</span>}
+      </div>
+      
+      {res.summary && (
+        <KeyValueGrid cols={2}>
+          {Object.entries(res.summary).map(([k, v]) => (
+            <KeyValueItem key={k} label={k.replace(/_/g, ' ')} value={String(v)} />
+          ))}
+        </KeyValueGrid>
+      )}
+      
+      {res.reason && (
+        <div className="text-xs text-muted italic" style={{ marginTop: '12px', borderTop: '1px solid var(--border-subtle)', paddingTop: '8px' }}>
+          {res.reason}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OperationsPage: React.FC = () => {
   const { interval } = useSymbol();
-  
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
 
@@ -30,143 +67,67 @@ const OperationsPage: React.FC = () => {
     }
   };
 
-  const renderResult = (key: string) => {
-    const res = results[key];
-    if (!res) return null;
-
-    if (res.error) {
-      return (
-        <div style={{ marginTop: '16px', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-sm)', color: 'var(--danger)', fontSize: '0.85rem' }}>
-          <strong>Error:</strong> {res.error}
-        </div>
-      );
+  const actions = [
+    {
+      id: 'train',
+      title: 'Model Training',
+      description: 'Triggers data preparation and training for trainable symbols in the current universe.',
+      icon: <Brain size={20} color="var(--primary)" />,
+      fn: () => runTrainTrainable({ interval, epochs: 10 })
+    },
+    {
+      id: 'inference',
+      title: 'Universe Inference',
+      description: 'Generates new decisions using the latest active models for ready symbols.',
+      icon: <Zap size={20} color="var(--tertiary)" />,
+      fn: () => runUniverseInference({ interval })
+    },
+    {
+      id: 'execution',
+      title: 'Universe Execution',
+      description: 'Dispatches orders based on latest actionable decisions. Respects guardrails.',
+      icon: <Play size={20} color="var(--success)" />,
+      fn: () => runUniverseExecution({ interval, require_actionable: true })
+    },
+    {
+      id: 'cycle',
+      title: 'Operational Cycle',
+      description: 'Runs Inference → Decision → Execution in a single orchestrated sequence.',
+      icon: <RotateCcw size={20} color="var(--secondary)" />,
+      fn: () => runOperationalCycle({ interval, require_actionable: true })
     }
-
-    return (
-      <div style={{ marginTop: '16px', padding: '12px', backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <Badge variant={res.status === 'COMPLETED' ? 'success' : res.status === 'SKIPPED' ? 'muted' : 'primary'}>
-            {res.status || 'SUCCESS'}
-          </Badge>
-          {res.run_record_id && <span className="text-xs text-muted text-mono">RUN: {res.run_record_id}</span>}
-        </div>
-        
-        {res.summary && (
-          <div className="text-xs text-mono" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            {Object.entries(res.summary).map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-muted">{k.toUpperCase()}</span>
-                <span>{String(v)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        {res.reason && (
-          <div className="text-xs text-muted" style={{ marginTop: '8px', fontStyle: 'italic' }}>
-            {res.reason}
-          </div>
-        )}
-      </div>
-    );
-  };
+  ];
 
   return (
     <PageContainer title="Operator Console">
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        
-        {/* A. Training */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <Brain size={20} color="var(--primary)" />
-            <h3 style={{ margin: 0 }}>Model Training</h3>
-          </div>
-          <p className="text-sm text-muted" style={{ marginBottom: '20px' }}>
-            Triggers data preparation and training for trainable symbols in the current universe.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="text-xs text-muted text-mono">INTERVAL: {interval}</div>
-            <Button 
-              variant="primary" 
-              onClick={() => executeAction('train', () => runTrainTrainable({ interval, epochs: 10 }))}
-              disabled={loading['train']}
-            >
-              {loading['train'] ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
-              Execute Training Flow
-            </Button>
-          </div>
-          {renderResult('train')}
-        </Card>
-
-        {/* B. Inference */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <Zap size={20} color="var(--tertiary)" />
-            <h3 style={{ margin: 0 }}>Universe Inference</h3>
-          </div>
-          <p className="text-sm text-muted" style={{ marginBottom: '20px' }}>
-            Generates new decisions using the latest active models for ready symbols.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="text-xs text-muted text-mono">INTERVAL: {interval}</div>
-            <Button 
-              variant="primary" 
-              onClick={() => executeAction('inference', () => runUniverseInference({ interval }))}
-              disabled={loading['inference']}
-            >
-              {loading['inference'] ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
-              Run All Inferences
-            </Button>
-          </div>
-          {renderResult('inference')}
-        </Card>
-
-        {/* C. Execution */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <Play size={20} color="var(--success)" />
-            <h3 style={{ margin: 0 }}>Universe Execution</h3>
-          </div>
-          <p className="text-sm text-muted" style={{ marginBottom: '20px' }}>
-            Dispatches orders based on latest actionable decisions. Respects guardrails.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="text-xs text-muted text-mono">INTERVAL: {interval}</div>
-            <Button 
-              variant="primary" 
-              onClick={() => executeAction('execution', () => runUniverseExecution({ interval, require_actionable: true }))}
-              disabled={loading['execution']}
-            >
-              {loading['execution'] ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
-              Dispatch Universe
-            </Button>
-          </div>
-          {renderResult('execution')}
-        </Card>
-
-        {/* D. Full Cycle */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <RotateCcw size={20} color="var(--secondary)" />
-            <h3 style={{ margin: 0 }}>Operational Cycle</h3>
-          </div>
-          <p className="text-sm text-muted" style={{ marginBottom: '20px' }}>
-            Runs Inference → Decision → Execution in a single orchestrated sequence.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="text-xs text-muted text-mono">INTERVAL: {interval}</div>
-            <Button 
-              variant="primary" 
-              onClick={() => executeAction('cycle', () => runOperationalCycle({ interval, require_actionable: true }))}
-              disabled={loading['cycle']}
-            >
-              {loading['cycle'] ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={18} />}
-              Run Full Cycle
-            </Button>
-          </div>
-          {renderResult('cycle')}
-        </Card>
-
+        {actions.map(action => (
+          <Card key={action.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <SectionHeader title={action.title} icon={action.icon} />
+            <p className="text-sm text-muted" style={{ marginBottom: '24px', flex: 1 }}>
+              {action.description}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="text-xs text-muted text-mono uppercase">TARGET INTERVAL: {interval}</div>
+              <Button 
+                variant="primary" 
+                onClick={() => executeAction(action.id, action.fn)}
+                disabled={loading[action.id]}
+                style={{ width: '100%' }}
+              >
+                {loading[action.id] ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  action.id === 'cycle' ? <RotateCcw size={18} /> : <Play size={18} />
+                )}
+                <span style={{ marginLeft: '8px' }}>
+                  {loading[action.id] ? 'Executing...' : `Run ${action.title}`}
+                </span>
+              </Button>
+            </div>
+            <ResultRenderer res={results[action.id]} />
+          </Card>
+        ))}
       </div>
     </PageContainer>
   );

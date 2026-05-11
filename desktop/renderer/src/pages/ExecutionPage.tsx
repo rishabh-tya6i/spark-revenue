@@ -12,26 +12,26 @@ import {
   GuardrailSummary,
   ExecutionOverride,
   DispatchRecord,
-  StalenessState,
-  ReadinessDetail
+  StalenessState
 } from '../api/orchestrationApi';
 import PageContainer from '../components/layout/PageContainer';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { 
-  RefreshCw, 
   ShieldCheck, 
   UserCog, 
   Send, 
   Clock, 
   CheckCircle2, 
-  XCircle, 
-  AlertTriangle,
   Plus,
   Trash2,
-  Table as TableIcon
+  AlertCircle
 } from 'lucide-react';
+import { SectionHeader } from '../components/data/SectionHeader';
+import { StatusBadge } from '../components/data/StatusBadge';
+import { KeyValueGrid, KeyValueItem } from '../components/data/KeyValueGrid';
+import { EmptyState } from '../components/data/EmptyState';
 
 const ExecutionPage: React.FC = () => {
   const { interval, symbol: contextSymbol } = useSymbol();
@@ -130,21 +130,9 @@ const ExecutionPage: React.FC = () => {
     }
   };
 
-  const renderSectionHeader = (title: string, icon: React.ReactNode, sectionKey: string) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {icon}
-        <h3 style={{ margin: 0 }}>{title}</h3>
-      </div>
-      <Button variant="outline" size="sm" onClick={() => fetchData(sectionKey)} disabled={loading[sectionKey]}>
-        <RefreshCw size={14} className={loading[sectionKey] ? 'animate-spin' : ''} />
-      </Button>
-    </div>
-  );
-
   const renderError = (msg: string | null) => msg ? (
-    <div className="text-danger text-sm" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <XCircle size={14} /> {msg}
+    <div className="glass-panel text-danger" style={{ marginBottom: '16px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <AlertCircle size={14} /> <span className="text-sm">{msg}</span>
     </div>
   ) : null;
 
@@ -154,7 +142,7 @@ const ExecutionPage: React.FC = () => {
         
         {/* A. Execution Readiness */}
         <Card>
-          {renderSectionHeader('Execution Readiness', <CheckCircle2 size={20} color="var(--success)" />, 'readiness')}
+          <SectionHeader title="Execution Readiness" icon={<CheckCircle2 size={20} color="var(--success)" />} onRefresh={() => fetchData('readiness')} loading={loading.readiness} />
           {renderError(errors.readiness)}
           <div className="table-container">
             <table className="data-table">
@@ -178,11 +166,7 @@ const ExecutionPage: React.FC = () => {
                       <span className="text-xs text-muted" style={{ marginLeft: '8px' }}>({d.decision_score.toFixed(2)})</span>
                     </td>
                     <td><Badge variant={d.rl_action === 'HOLD' ? 'muted' : 'primary'}>{d.rl_action}</Badge></td>
-                    <td>
-                      <Badge variant={d.ready ? 'success' : 'danger'}>
-                        {d.ready ? 'READY' : 'NOT READY'}
-                      </Badge>
-                    </td>
+                    <td><StatusBadge type="readiness" status={d.ready} label={d.ready ? 'READY' : 'NOT READY'} /></td>
                     <td className="text-xs text-muted">
                       {d.override_active && (
                         <div className="text-warning">
@@ -197,7 +181,7 @@ const ExecutionPage: React.FC = () => {
                   </tr>
                 ))}
                 {!loading.readiness && readiness?.details.length === 0 && (
-                  <tr><td colSpan={5} className="text-center text-muted py-4">No symbols in current universe universe.</td></tr>
+                  <tr><td colSpan={5}><EmptyState message="No symbols in current universe." /></td></tr>
                 )}
               </tbody>
             </table>
@@ -208,46 +192,30 @@ const ExecutionPage: React.FC = () => {
           
           {/* B. Guardrails */}
           <Card>
-            {renderSectionHeader('Execution Guardrails', <ShieldCheck size={20} color="var(--primary)" />, 'guardrails')}
+            <SectionHeader title="Execution Guardrails" icon={<ShieldCheck size={20} color="var(--primary)" />} onRefresh={() => fetchData('guardrails')} loading={loading.guardrails} />
             {renderError(errors.guardrails)}
             {guardrails && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="text-xs text-muted text-mono">EXECUTION GUARD</span>
-                  <Badge variant={guardrails.guardrails.execution_enabled ? 'success' : 'danger'}>
-                    {guardrails.guardrails.execution_enabled ? 'ENABLED' : 'LOCKED'}
-                  </Badge>
+                  <StatusBadge type="readiness" status={guardrails.guardrails.execution_enabled} label={guardrails.guardrails.execution_enabled ? 'ENABLED' : 'LOCKED'} />
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">ALLOWED ACTIONS</div>
-                    <div className="text-sm text-mono">{guardrails.guardrails.allowed_actions.join(', ') || 'NONE'}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">MAX PER RUN</div>
-                    <div className="text-xl text-mono">{guardrails.guardrails.max_symbols_per_run}</div>
-                  </div>
-                </div>
+                <KeyValueGrid>
+                  <KeyValueItem label="Allowed Actions" value={guardrails.guardrails.allowed_actions.join(', ') || 'NONE'} />
+                  <KeyValueItem label="Max Per Run" value={guardrails.guardrails.max_symbols_per_run} />
+                </KeyValueGrid>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">REQUESTED</div>
-                    <div className="text-xl text-mono">{guardrails.guardrails.requested_ready_symbols.length}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">ALLOWED</div>
-                    <div className="text-xl text-mono" style={{ color: 'var(--success)' }}>
-                      {guardrails.guardrails.allowed_symbols.length}
-                    </div>
-                  </div>
-                </div>
+                <KeyValueGrid>
+                  <KeyValueItem label="Requested" value={guardrails.guardrails.requested_ready_symbols.length} />
+                  <KeyValueItem label="Allowed" value={guardrails.guardrails.allowed_symbols.length} valueColor="var(--success)" />
+                </KeyValueGrid>
                 
                 <div>
                   <div className="text-xs text-muted text-mono" style={{ marginBottom: '8px' }}>BLOCKED SYMBOLS</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {guardrails.guardrails.blocked_symbols.map(({ symbol, reason }) => (
-                      <div key={symbol} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: 'var(--radius-sm)' }}>
+                      <div key={symbol} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px' }}>
                         <span className="text-mono text-sm">{symbol}</span>
                         <span className="text-xs text-danger">{reason}</span>
                       </div>
@@ -263,28 +231,17 @@ const ExecutionPage: React.FC = () => {
 
           {/* C. Manual Overrides */}
           <Card>
-            {renderSectionHeader('Manual Overrides', <UserCog size={20} color="var(--tertiary)" />, 'overrides')}
+            <SectionHeader title="Manual Overrides" icon={<UserCog size={20} color="var(--tertiary)" />} onRefresh={() => fetchData('overrides')} loading={loading.overrides} />
             {renderError(errors.overrides)}
             
-            {/* Form */}
             <form onSubmit={handleAddOverride} style={{ marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label className="text-xs text-muted text-mono">SYMBOL</label>
-                <input 
-                  className="input-void" 
-                  value={newOverride.symbol} 
-                  onChange={e => setNewOverride({...newOverride, symbol: e.target.value.toUpperCase()})}
-                  placeholder="BTC-USD"
-                  required
-                />
+                <input className="input-void" value={newOverride.symbol} onChange={e => setNewOverride({...newOverride, symbol: e.target.value.toUpperCase()})} placeholder="BTC-USD" required />
               </div>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label className="text-xs text-muted text-mono">ACTION</label>
-                <select 
-                  className="input-void" 
-                  value={newOverride.action} 
-                  onChange={e => setNewOverride({...newOverride, action: e.target.value})}
-                >
+                <select className="input-void" value={newOverride.action} onChange={e => setNewOverride({...newOverride, action: e.target.value})}>
                   <option value="SKIP">SKIP</option>
                   <option value="HOLD">HOLD</option>
                   <option value="BUY">BUY</option>
@@ -311,31 +268,24 @@ const ExecutionPage: React.FC = () => {
                       <td className="text-mono">{o.symbol}</td>
                       <td><Badge variant="warning">{o.override_action}</Badge></td>
                       <td style={{ textAlign: 'right' }}>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleClearOverride(o.symbol)}
-                          disabled={loading[`clear-${o.symbol}`]}
-                          aria-label="Clear Override"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleClearOverride(o.symbol)} disabled={loading[`clear-${o.symbol}`]} aria-label="Clear Override">
                           <Trash2 size={14} className="text-danger" />
                         </Button>
                       </td>
                     </tr>
                   ))}
                   {overrides.length === 0 && (
-                    <tr><td colSpan={3} className="text-center text-muted py-4 text-xs">No active overrides.</td></tr>
+                    <tr><td colSpan={3} className="text-center py-4"><span className="text-muted text-xs italic">No active overrides.</span></td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </Card>
-
         </div>
 
         {/* D. Dispatch History */}
         <Card>
-          {renderSectionHeader('Dispatch Ledger', <Send size={20} color="var(--secondary)" />, 'dispatches')}
+          <SectionHeader title="Dispatch Ledger" icon={<Send size={20} color="var(--secondary)" />} onRefresh={() => fetchData('dispatches')} loading={loading.dispatches} />
           {renderError(errors.dispatches)}
           <div className="table-container">
             <table className="data-table">
@@ -355,21 +305,15 @@ const ExecutionPage: React.FC = () => {
                   <tr key={d.id}>
                     <td className="text-mono text-xs text-muted">{d.id}</td>
                     <td className="text-mono">{d.symbol}</td>
-                    <td className="text-mono text-xs">
-                      {d.source_type.toUpperCase()} ({d.source_id})
-                    </td>
+                    <td className="text-mono text-xs">{d.source_type.toUpperCase()} ({d.source_id})</td>
                     <td><Badge variant="primary">{d.dispatched_action}</Badge></td>
-                    <td>
-                      <Badge variant={d.status === 'executed' ? 'success' : d.status === 'failed' ? 'danger' : 'muted'}>
-                        {d.status.toUpperCase()}
-                      </Badge>
-                    </td>
+                    <td><StatusBadge type="dispatch" status={d.status} /></td>
                     <td className="text-mono text-xs">{d.order_id || '-'}</td>
                     <td className="text-xs text-muted">{new Date(d.created_ts).toLocaleString()}</td>
                   </tr>
                 ))}
                 {dispatches.length === 0 && (
-                  <tr><td colSpan={7} className="text-center text-muted py-4">No recent dispatches.</td></tr>
+                  <tr><td colSpan={7}><EmptyState message="No recent dispatches." /></td></tr>
                 )}
               </tbody>
             </table>
@@ -378,26 +322,22 @@ const ExecutionPage: React.FC = () => {
 
         {/* E. Staleness Inspection */}
         <Card>
-          {renderSectionHeader('Staleness Inspection', <Clock size={20} color="var(--muted)" />, 'staleness')}
+          <SectionHeader title="Staleness Inspection" icon={<Clock size={20} color="var(--muted)" />} onRefresh={() => fetchData('staleness')} loading={loading.staleness} />
           {renderError(errors.staleness)}
           <div className="grid" style={{ gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="glass-panel" style={{ padding: '16px' }}>
-                <div className="text-xs text-muted text-mono" style={{ marginBottom: '12px' }}>STALENESS SUMMARY</div>
+                <div className="text-xs text-muted text-mono" style={{ marginBottom: '16px' }}>STALENESS SUMMARY</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="text-sm text-muted">STALE DECISIONS</span>
-                    <Badge variant={staleness?.summary.stale_decision_symbols.length ? 'danger' : 'success'}>
-                      {staleness?.summary.stale_decision_symbols.length || 0}
-                    </Badge>
+                    <StatusBadge type="staleness" status={staleness?.summary.stale_decision_symbols.length || 0} label={String(staleness?.summary.stale_decision_symbols.length || 0)} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="text-sm text-muted">STALE OVERRIDES</span>
-                    <Badge variant={staleness?.summary.stale_override_symbols.length ? 'danger' : 'success'}>
-                      {staleness?.summary.stale_override_symbols.length || 0}
-                    </Badge>
+                    <StatusBadge type="staleness" status={staleness?.summary.stale_override_symbols.length || 0} label={String(staleness?.summary.stale_override_symbols.length || 0)} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="text-sm text-muted">FRESH CANDIDATES</span>
                     <Badge variant="primary">{staleness?.summary.fresh_candidates.length || 0}</Badge>
                   </div>
@@ -420,20 +360,16 @@ const ExecutionPage: React.FC = () => {
                       <td className="text-mono">{d.symbol}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <Badge variant={d.decision_stale ? 'danger' : 'success'}>
-                            DECISION: {d.decision_stale ? 'STALE' : 'FRESH'}
-                          </Badge>
+                          <StatusBadge type="staleness" status={d.decision_stale} label={`DECISION: ${d.decision_stale ? 'STALE' : 'FRESH'}`} />
                           {d.override_active && (
-                            <Badge variant={d.override_stale ? 'danger' : 'success'}>
-                              OVERRIDE: {d.override_stale ? 'STALE' : 'FRESH'}
-                            </Badge>
+                            <StatusBadge type="staleness" status={d.override_stale} label={`OVERRIDE: ${d.override_stale ? 'STALE' : 'FRESH'}`} />
                           )}
                         </div>
                       </td>
                       <td className="text-xs text-muted">
                         {d.decision_stale && <div>Decision stale since {d.decision_ts ? new Date(d.decision_ts).toLocaleString() : 'N/A'}</div>}
                         {d.override_stale && <div>Override stale since {d.override_created_ts ? new Date(d.override_created_ts).toLocaleString() : 'N/A'}</div>}
-                        {!d.decision_stale && !d.override_stale && <div>All source data is fresh.</div>}
+                        {!d.decision_stale && !d.override_stale && <div className="text-success">All source data is fresh.</div>}
                       </td>
                     </tr>
                   ))}
@@ -442,7 +378,6 @@ const ExecutionPage: React.FC = () => {
             </div>
           </div>
         </Card>
-
       </div>
     </PageContainer>
   );

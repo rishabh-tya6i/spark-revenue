@@ -20,6 +20,9 @@ import {
   RotateCcw,
   AlertCircle
 } from 'lucide-react';
+import { StatusBadge } from '../components/data/StatusBadge';
+import { EmptyState } from '../components/data/EmptyState';
+import { KeyValueGrid, KeyValueItem } from '../components/data/KeyValueGrid';
 
 const SummaryRenderer: React.FC<{ data: any }> = ({ data }) => {
   if (!data || typeof data !== 'object') return <span>{String(data)}</span>;
@@ -186,11 +189,7 @@ const RunsPage: React.FC = () => {
                           <span className="text-xs text-mono uppercase">{run.run_type}</span>
                         </div>
                       </td>
-                      <td>
-                        <Badge variant={run.status === 'completed' || run.status === 'success' ? 'success' : run.status === 'failed' ? 'danger' : 'muted'}>
-                          {run.status.toUpperCase()}
-                        </Badge>
-                      </td>
+                      <td><StatusBadge type="run" status={run.status} /></td>
                       <td>
                         <div className="text-xs text-mono">
                           {run.mode} <span className="text-muted">/</span> {run.interval}
@@ -212,11 +211,7 @@ const RunsPage: React.FC = () => {
                     </tr>
                   ))}
                   {!loading && runs.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="text-center text-muted py-12">
-                        No orchestration runs found.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={7}><EmptyState message="No orchestration runs found." /></td></tr>
                   )}
                 </tbody>
               </table>
@@ -226,24 +221,17 @@ const RunsPage: React.FC = () => {
           {/* Right: Detail Panel */}
           <Card style={{ flex: 1.5, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {!selectedRun ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                <History size={48} strokeWidth={1} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                <p>Select a run to view details</p>
-              </div>
+              <EmptyState message="Select a run to view details" icon={<History size={48} strokeWidth={1} style={{ opacity: 0.5 }} />} />
             ) : (
-              <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', padding: '2px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      Run #{selectedRun.id}
-                    </h3>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>Run #{selectedRun.id}</h3>
                     <div className="text-xs text-muted text-mono uppercase" style={{ marginTop: '4px' }}>
                       {selectedRun.run_type} | {selectedRun.mode} | {selectedRun.interval}
                     </div>
                   </div>
-                  <Badge variant={selectedRun.status === 'completed' || selectedRun.status === 'success' ? 'success' : selectedRun.status === 'failed' ? 'danger' : 'muted'}>
-                    {selectedRun.status.toUpperCase()}
-                  </Badge>
+                  <StatusBadge type="run" status={selectedRun.status} />
                 </div>
 
                 {selectedRun.reason && (
@@ -253,28 +241,12 @@ const RunsPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">SELECTED SYMBOLS</div>
-                    <div className="text-xl text-mono">{selectedRun.selected_symbols_count}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">READY SYMBOLS</div>
-                    <div className="text-xl text-mono">{selectedRun.ready_symbols_count}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">SUCCESS / SKIPPED</div>
-                    <div className="text-xl text-mono" style={{ color: 'var(--success)' }}>
-                      {selectedRun.success_count} / {selectedRun.skipped_count}
-                    </div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '12px' }}>
-                    <div className="text-xs text-muted text-mono">FAILED</div>
-                    <div className="text-xl text-mono" style={{ color: selectedRun.failed_count > 0 ? 'var(--danger)' : 'var(--text-main)' }}>
-                      {selectedRun.failed_count}
-                    </div>
-                  </div>
-                </div>
+                <KeyValueGrid cols={2}>
+                  <KeyValueItem label="Selected Symbols" value={selectedRun.selected_symbols_count} />
+                  <KeyValueItem label="Ready Symbols" value={selectedRun.ready_symbols_count} />
+                  <KeyValueItem label="Success / Skipped" value={`${selectedRun.success_count} / ${selectedRun.skipped_count}`} valueColor="var(--success)" />
+                  <KeyValueItem label="Failed" value={selectedRun.failed_count} valueColor={selectedRun.failed_count > 0 ? 'var(--danger)' : undefined} />
+                </KeyValueGrid>
 
                 <div>
                   <div className="text-xs text-muted text-mono" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
