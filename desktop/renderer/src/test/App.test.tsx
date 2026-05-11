@@ -35,6 +35,10 @@ describe('App Shell and Routing', () => {
   it('renders sidebar with new navigation items', async () => {
     render(<App />);
     
+    await waitFor(() => {
+      expect(screen.getByText('Universe & Readiness')).toBeInTheDocument();
+    });
+
     expect(screen.getByText('SPARK')).toBeInTheDocument();
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getByText('Operations')).toBeInTheDocument();
@@ -48,6 +52,10 @@ describe('App Shell and Routing', () => {
   it('defaults to NIFTY and 5m', async () => {
     render(<App />);
     
+    await waitFor(() => {
+      expect(screen.getByText('Universe & Readiness')).toBeInTheDocument();
+    });
+
     const symbolInput = screen.getByDisplayValue('NIFTY');
     const intervalSelect = screen.getByDisplayValue('5m');
     

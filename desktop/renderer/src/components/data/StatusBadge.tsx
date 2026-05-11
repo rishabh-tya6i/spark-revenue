@@ -4,11 +4,12 @@ import {
   getRunStatusVariant, 
   getDispatchStatusVariant, 
   getReadinessVariant, 
-  getStalenessVariant 
+  getStalenessVariant,
+  getDecisionVariant
 } from '../../utils/statusUtils';
 
 interface StatusBadgeProps {
-  type: 'run' | 'dispatch' | 'readiness' | 'staleness';
+  type: 'run' | 'dispatch' | 'readiness' | 'staleness' | 'decision';
   status: string | boolean | number | undefined;
   label?: string;
 }
@@ -29,6 +30,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ type, status, label })
       break;
     case 'staleness':
       variant = getStalenessVariant(!!status);
+      break;
+    case 'decision':
+      variant = getDecisionVariant(status as string);
       break;
   }
 

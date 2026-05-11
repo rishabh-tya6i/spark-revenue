@@ -10,7 +10,7 @@ vi.mock('../api/decisionApi');
 vi.mock('../api/optionsApi');
 vi.mock('../api/sentimentApi');
 
-const mockDecision = {
+const mockDecision: decisionApi.FusedDecisionDTO = {
   symbol: 'BTCUSDT',
   interval: '5m',
   timestamp: new Date().toISOString(),
@@ -43,14 +43,16 @@ const mockSentiment = [
   { news_id: 1, sentiment_score: 0.8, sentiment_label: 'POSITIVE', model_name: 'test', created_ts: new Date().toISOString() }
 ];
 
-describe('DashboardPage', () => {
+describe('DashboardPage (Signals Page)', () => {
   beforeEach(() => {
-    vi.mocked(decisionApi.getLatestDecision).mockResolvedValue(mockDecision);
-    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(mockOptions);
-    vi.mocked(sentimentApi.getLatestSentiment).mockResolvedValue(mockSentiment);
+    vi.clearAllMocks();
   });
 
-  it('renders decision label and score', async () => {
+  it('renders fused decision section from mocked data', async () => {
+    vi.mocked(decisionApi.getLatestDecision).mockResolvedValue(mockDecision);
+    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(null);
+    vi.mocked(sentimentApi.getLatestSentiment).mockResolvedValue([]);
+
     render(
       <SymbolProvider>
         <DashboardPage />
@@ -58,12 +60,18 @@ describe('DashboardPage', () => {
     );
 
     await waitFor(() => {
+      expect(screen.getByText('Fused Decision')).toBeInTheDocument();
       expect(screen.getByText('STRONG_BULLISH')).toBeInTheDocument();
       expect(screen.getByText('85.0%')).toBeInTheDocument();
+      expect(screen.getByText('BUY')).toBeInTheDocument();
     });
   });
 
-  it('renders options signal card', async () => {
+  it('renders options section when options data exists', async () => {
+    vi.mocked(decisionApi.getLatestDecision).mockResolvedValue(null as any);
+    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(mockOptions);
+    vi.mocked(sentimentApi.getLatestSentiment).mockResolvedValue([]);
+
     render(
       <SymbolProvider>
         <DashboardPage />
@@ -72,12 +80,17 @@ describe('DashboardPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Options Intel')).toBeInTheDocument();
+      expect(screen.getByText('CALL_BUILDUP')).toBeInTheDocument();
       expect(screen.getByText('0.700')).toBeInTheDocument();
       expect(screen.getByText('$45,000')).toBeInTheDocument();
     });
   });
 
-  it('renders sentiment headlines', async () => {
+  it('renders sentiment items when sentiment exists', async () => {
+    vi.mocked(decisionApi.getLatestDecision).mockResolvedValue(mockDecision);
+    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(null);
+    vi.mocked(sentimentApi.getLatestSentiment).mockResolvedValue(mockSentiment);
+
     render(
       <SymbolProvider>
         <DashboardPage />
@@ -85,7 +98,46 @@ describe('DashboardPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('News Item #1')).toBeInTheDocument();
+      expect(screen.getAllByText(/Market Sentiment/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/NEWS ITEM\s*#1/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/POSITIVE/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('gracefully handles missing decision and/or missing options', async () => {
+    vi.mocked(decisionApi.getLatestDecision).mockResolvedValue(null as any);
+    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(null);
+    vi.mocked(sentimentApi.getLatestSentiment).mockResolvedValue([]);
+
+    render(
+      <SymbolProvider>
+        <DashboardPage />
+      </SymbolProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/No fused decision available/i)).toBeInTheDocument();
+      expect(screen.getByText(/No options intel available/i)).toBeInTheDocument();
+      expect(screen.getByText(/No headlines found/i)).toBeInTheDocument();
+    });
+  });
+
+  it('handles fetch rejection by showing empty state', async () => {
+    vi.mocked(decisionApi.getLatestDecision).mockRejectedValue(new Error('Fetch failed'));
+    vi.mocked(optionsApi.getOptionsSignal).mockResolvedValue(mockOptions);
+
+    render(
+      <SymbolProvider>
+        <DashboardPage />
+      </SymbolProvider>
+    );
+
+    await waitFor(() => {
+      // Should show empty state for decision
+      expect(screen.getByText(/No fused decision available/i)).toBeInTheDocument();
+      // But still show options data
+      expect(screen.getByText('Options Intel')).toBeInTheDocument();
+      expect(screen.getByText('CALL_BUILDUP')).toBeInTheDocument();
     });
   });
 });

@@ -37,3 +37,15 @@ export const getReadinessVariant = (ready: boolean | undefined): BadgeVariant =>
 export const getStalenessVariant = (stale: boolean | undefined): BadgeVariant => {
   return stale ? 'danger' : 'success';
 };
+
+/**
+ * Maps decision labels to UI badge variants.
+ */
+export const getDecisionVariant = (label: string | undefined): BadgeVariant => {
+  if (!label) return 'muted';
+  const l = label.toLowerCase();
+  if (l.includes('bullish')) return 'success';
+  if (l.includes('bearish')) return 'danger';
+  if (l.includes('neutral')) return 'muted';
+  return 'primary';
+};
