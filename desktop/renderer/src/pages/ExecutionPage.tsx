@@ -131,14 +131,14 @@ const ExecutionPage: React.FC = () => {
   };
 
   const renderError = (msg: string | null) => msg ? (
-    <div className="glass-panel text-danger" style={{ marginBottom: '16px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="glass-panel text-danger mb-md p-sm flex items-center gap-sm">
       <AlertCircle size={14} /> <span className="text-sm">{msg}</span>
     </div>
   ) : null;
 
   return (
     <PageContainer title="Execution Management">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="flex-col gap-lg">
         
         {/* A. Execution Readiness */}
         <Card>
@@ -146,7 +146,7 @@ const ExecutionPage: React.FC = () => {
           {renderError(errors.readiness)}
           <div className="table-container">
             <table className="data-table">
-              <thead>
+              <thead className="sticky-header">
                 <tr>
                   <th>SYMBOL</th>
                   <th>DECISION</th>
@@ -187,16 +187,16 @@ const ExecutionPage: React.FC = () => {
             </table>
           </div>
         </Card>
-
-        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        
+        <div className="grid grid-2 gap-lg">
           
           {/* B. Guardrails */}
           <Card>
             <SectionHeader title="Execution Guardrails" icon={<ShieldCheck size={20} color="var(--primary)" />} onRefresh={() => fetchData('guardrails')} loading={loading.guardrails} />
             {renderError(errors.guardrails)}
             {guardrails && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex-col gap-md">
+                <div className="flex justify-between items-center">
                   <span className="text-xs text-muted text-mono">EXECUTION GUARD</span>
                   <StatusBadge type="readiness" status={guardrails.guardrails.execution_enabled} label={guardrails.guardrails.execution_enabled ? 'ENABLED' : 'LOCKED'} />
                 </div>
@@ -212,10 +212,10 @@ const ExecutionPage: React.FC = () => {
                 </KeyValueGrid>
                 
                 <div>
-                  <div className="text-xs text-muted text-mono" style={{ marginBottom: '8px' }}>BLOCKED SYMBOLS</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="text-xs text-muted text-mono mb-sm">BLOCKED SYMBOLS</div>
+                  <div className="flex-col gap-sm">
                     {guardrails.guardrails.blocked_symbols.map(({ symbol, reason }) => (
-                      <div key={symbol} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px' }}>
+                      <div key={symbol} className="glass-panel flex justify-between items-center p-sm">
                         <span className="text-mono text-sm">{symbol}</span>
                         <span className="text-xs text-danger">{reason}</span>
                       </div>
@@ -234,8 +234,8 @@ const ExecutionPage: React.FC = () => {
             <SectionHeader title="Manual Overrides" icon={<UserCog size={20} color="var(--tertiary)" />} onRefresh={() => fetchData('overrides')} loading={loading.overrides} />
             {renderError(errors.overrides)}
             
-            <form onSubmit={handleAddOverride} style={{ marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <form onSubmit={handleAddOverride} className="grid grid-3 gap-md items-center mb-lg">
+              <div className="flex-col gap-xs">
                 <label className="text-xs text-muted text-mono">SYMBOL</label>
                 <input className="input-void" value={newOverride.symbol} onChange={e => setNewOverride({...newOverride, symbol: e.target.value.toUpperCase()})} placeholder="BTC-USD" required />
               </div>
@@ -255,7 +255,7 @@ const ExecutionPage: React.FC = () => {
 
             <div className="table-container">
               <table className="data-table">
-                <thead>
+                <thead className="sticky-header">
                   <tr>
                     <th>SYMBOL</th>
                     <th>ACTION</th>
@@ -289,7 +289,7 @@ const ExecutionPage: React.FC = () => {
           {renderError(errors.dispatches)}
           <div className="table-container">
             <table className="data-table">
-              <thead>
+              <thead className="sticky-header">
                 <tr>
                   <th>ID</th>
                   <th>SYMBOL</th>
@@ -324,20 +324,20 @@ const ExecutionPage: React.FC = () => {
         <Card>
           <SectionHeader title="Staleness Inspection" icon={<Clock size={20} color="var(--muted)" />} onRefresh={() => fetchData('staleness')} loading={loading.staleness} />
           {renderError(errors.staleness)}
-          <div className="grid" style={{ gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="glass-panel" style={{ padding: '16px' }}>
-                <div className="text-xs text-muted text-mono" style={{ marginBottom: '16px' }}>STALENESS SUMMARY</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="grid gap-lg" style={{ gridTemplateColumns: '1fr 2fr' }}>
+            <div className="flex-col gap-md">
+              <div className="glass-panel p-md">
+                <div className="text-xs text-muted text-mono mb-md">STALENESS SUMMARY</div>
+                <div className="flex-col gap-sm">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-muted">STALE DECISIONS</span>
                     <StatusBadge type="staleness" status={staleness?.summary.stale_decision_symbols.length || 0} label={String(staleness?.summary.stale_decision_symbols.length || 0)} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-muted">STALE OVERRIDES</span>
                     <StatusBadge type="staleness" status={staleness?.summary.stale_override_symbols.length || 0} label={String(staleness?.summary.stale_override_symbols.length || 0)} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-muted">FRESH CANDIDATES</span>
                     <Badge variant="primary">{staleness?.summary.fresh_candidates.length || 0}</Badge>
                   </div>
@@ -347,7 +347,7 @@ const ExecutionPage: React.FC = () => {
             
             <div className="table-container">
               <table className="data-table">
-                <thead>
+                <thead className="sticky-header">
                   <tr>
                     <th>SYMBOL</th>
                     <th>STATE</th>

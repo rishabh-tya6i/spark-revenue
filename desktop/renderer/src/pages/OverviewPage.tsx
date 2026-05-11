@@ -50,19 +50,19 @@ const OverviewPage: React.FC = () => {
       )}
 
       {state && (
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        <div className="grid gap-lg" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
           
           {/* Universe & Readiness */}
           <Card>
             <SectionHeader title="Universe & Readiness" icon={<Globe size={20} color="var(--primary)" />} onRefresh={fetchState} loading={loading} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex-col gap-md">
               <KeyValueGrid>
                 <KeyValueItem label="Mode / Interval" value={`${state.mode.toUpperCase()} / ${state.interval}`} />
                 <KeyValueItem label="Selected" value={`${state.symbols.length} Symbols`} />
               </KeyValueGrid>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex-col gap-sm">
+                <div className="flex justify-between items-center">
                   <span className="text-xs text-muted text-mono">INFERENCE READY</span>
                   <Badge data-testid="inference-readiness" variant={state.inference_ready_symbols.length === state.symbols.length ? 'success' : 'primary'}>
                     {`${state.inference_ready_symbols.length} / ${state.symbols.length}`}
@@ -76,11 +76,11 @@ const OverviewPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="glass-panel" style={{ padding: '12px' }}>
-                <div className="text-xs text-muted text-mono" style={{ marginBottom: '8px' }}>ACTIVE UNIVERSE</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <div className="glass-panel p-sm">
+                <div className="text-xs text-muted text-mono mb-sm">ACTIVE UNIVERSE</div>
+                <div className="flex flex-wrap gap-xs">
                   {state.symbols.map(s => (
-                    <span key={s} className="text-mono text-xs glass-panel" style={{ padding: '2px 6px', borderRadius: '4px' }}>{s}</span>
+                    <span key={s} className="text-mono text-xs glass-panel" style={{ padding: '2px 6px' }}>{s}</span>
                   ))}
                 </div>
               </div>
@@ -90,7 +90,7 @@ const OverviewPage: React.FC = () => {
           {/* Model Availability */}
           <Card>
             <SectionHeader title="Model Availability" icon={<Shield size={20} color="var(--primary)" />} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex-col gap-md">
               <KeyValueGrid>
                 <KeyValueItem 
                   label="Price Models" 
@@ -103,7 +103,7 @@ const OverviewPage: React.FC = () => {
               </KeyValueGrid>
 
               {(state.models.missing_price_model.length > 0 || state.models.missing_rl_agent.length > 0) && (
-                <div className="glass-panel text-danger" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="glass-panel text-danger p-sm flex-col gap-xs">
                   {state.models.missing_price_model.length > 0 && (
                     <div className="text-xs text-mono">MISSING PRICE: {state.models.missing_price_model.join(', ')}</div>
                   )}
@@ -118,7 +118,7 @@ const OverviewPage: React.FC = () => {
           {/* Decisions & Execution */}
           <Card>
             <SectionHeader title="Decisions & Execution" icon={<Zap size={20} color="var(--tertiary)" />} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex-col gap-md">
               <KeyValueGrid>
                 <KeyValueItem label="Actionable" value={state.decisions.actionable.length} valueColor="var(--success)" />
                 <KeyValueItem label="Neutral/Hold" value={state.decisions.hold.length} valueColor="var(--muted)" />
@@ -133,8 +133,8 @@ const OverviewPage: React.FC = () => {
           {/* Safety & Guardrails */}
           <Card>
             <SectionHeader title="Safety Context" icon={<Activity size={20} color="var(--secondary)" />} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="flex-col gap-md">
+              <div className="flex justify-between items-center">
                 <span className="text-xs text-muted text-mono">EXECUTION GUARD</span>
                 <StatusBadge type="readiness" status={state.execution_guardrails.execution_enabled} label={state.execution_guardrails.execution_enabled ? 'ENABLED' : 'LOCKED'} />
               </div>
@@ -147,7 +147,7 @@ const OverviewPage: React.FC = () => {
                 />
               </KeyValueGrid>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span className="text-xs text-muted text-mono">ACTIVE OVERRIDES</span>
                 <Badge variant={state.execution_overrides.active_symbols.length > 0 ? 'warning' : 'muted'}>
                   {state.execution_overrides.active_symbols.length} manual
@@ -159,14 +159,14 @@ const OverviewPage: React.FC = () => {
           {/* Latest Runs */}
           <Card style={{ gridColumn: 'span 2' }}>
             <SectionHeader title="Latest Orchestration Runs" icon={<History size={20} color="var(--primary)" />} />
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <div className="grid grid-4 gap-md">
               {(['train', 'inference', 'execution', 'cycle'] as const).map(type => {
                 const run = state.latest_runs[type];
                 return (
-                  <div key={type} className="glass-panel" style={{ padding: '16px' }}>
-                    <div className="text-xs text-muted text-mono" style={{ marginBottom: '12px' }}>{type.toUpperCase()}</div>
+                  <div key={type} className="glass-panel p-md">
+                    <div className="text-xs text-muted text-mono mb-md">{type.toUpperCase()}</div>
                     {run ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="flex-col gap-sm">
                         <StatusBadge type="run" status={run.status} />
                         <div className="text-mono text-xs">ID: {run.id}</div>
                         <div className="text-muted text-xs">{new Date(run.created_ts).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>

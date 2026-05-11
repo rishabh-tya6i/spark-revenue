@@ -50,14 +50,14 @@ const DashboardPage: React.FC = () => {
     }
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex-col gap-md">
+        <div className="flex justify-between items-center">
           <span className="text-xs text-muted text-mono uppercase">DECISION LABEL</span>
           <StatusBadge type="decision" status={decision.decision_label} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }} className="text-muted text-mono uppercase">
+        <div className="flex-col gap-sm">
+          <div className="flex justify-between text-muted text-mono uppercase" style={{ fontSize: '0.85rem' }}>
             <span>Confidence Score</span>
             <span>{(decision.decision_score * 100).toFixed(1)}%</span>
           </div>
@@ -70,7 +70,7 @@ const DashboardPage: React.FC = () => {
           <KeyValueItem 
             label="Price Signal" 
             value={
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center gap-sm">
                 {decision.price_direction === 'BULLISH' ? <TrendingUp size={16} color="var(--success)" /> : decision.price_direction === 'BEARISH' ? <TrendingDown size={16} color="var(--danger)" /> : <Minus size={16} />}
                 <span>{decision.price_direction}</span>
               </div>
@@ -90,8 +90,8 @@ const DashboardPage: React.FC = () => {
     }
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex-col gap-md">
+        <div className="flex justify-between items-center">
           <span className="text-xs text-muted text-mono uppercase">OPTION SIGNAL</span>
           <StatusBadge type="decision" status={options.signal_label} />
         </div>
@@ -108,10 +108,10 @@ const DashboardPage: React.FC = () => {
 
   const renderSentimentSection = () => {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="flex-col gap-md">
         {decision && (
-          <div className="glass-panel" style={{ padding: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div className="glass-panel p-md">
+            <div className="flex justify-between items-center mb-md">
               <span className="text-xs text-muted text-mono uppercase">AGGREGATE SENTIMENT</span>
               <span className="text-mono" style={{ color: decision.sentiment_label === 'POSITIVE' ? 'var(--success)' : decision.sentiment_label === 'NEGATIVE' ? 'var(--danger)' : 'var(--muted)', fontWeight: 700 }}>
                 {decision.sentiment_label}
@@ -130,17 +130,16 @@ const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="flex-col gap-md">
           <span className="text-xs text-muted text-mono uppercase">LATEST HEADLINES</span>
           {sentiment.length > 0 ? (
             sentiment.map((s, idx) => (
-              <div key={idx} style={{ 
-                padding: '12px', 
+              <div key={idx} className="p-sm" style={{ 
                 borderLeft: `4px solid ${s.sentiment_label === 'POSITIVE' ? 'var(--success)' : s.sentiment_label === 'NEGATIVE' ? 'var(--danger)' : 'var(--muted)'}`, 
                 backgroundColor: 'rgba(255,255,255,0.02)', 
                 borderRadius: '0 4px 4px 0' 
               }}>
-                <div style={{ fontSize: '0.85rem', marginBottom: '4px' }} className="text-mono">{`NEWS ITEM #${s.news_id}`}</div>
+                <div style={{ fontSize: '0.85rem' }} className="text-mono mb-xs">{`NEWS ITEM #${s.news_id}`}</div>
                 <div style={{ fontSize: '0.75rem' }} className="text-muted text-mono">
                   {`SCORE: ${s.sentiment_score.toFixed(2)} | ${s.sentiment_label}`}
                 </div>
@@ -165,12 +164,12 @@ const DashboardPage: React.FC = () => {
   return (
     <PageContainer title="Signal Monitoring">
       {error && (
-        <Card className="text-danger" style={{ marginBottom: '24px' }}>
+        <Card className="text-danger mb-lg">
           {error}
         </Card>
       )}
 
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '24px' }}>
+      <div className="grid gap-lg" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))' }}>
         {/* Fused Decision */}
         <Card>
           <SectionHeader 

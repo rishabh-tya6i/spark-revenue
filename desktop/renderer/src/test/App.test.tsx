@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from '../App';
 
 // Mock the API calls
@@ -32,6 +32,10 @@ vi.mock('../api/sentimentApi', () => ({
 }));
 
 describe('App Shell and Routing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders sidebar with new navigation items', async () => {
     render(<App />);
     
@@ -66,8 +70,6 @@ describe('App Shell and Routing', () => {
   it('redirects / to /overview', async () => {
     render(<App />);
     
-    await waitFor(() => {
-      expect(screen.getByText('Universe & Readiness')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Universe & Readiness')).toBeInTheDocument();
   });
 });

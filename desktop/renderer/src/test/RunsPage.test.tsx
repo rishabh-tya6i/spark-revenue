@@ -125,6 +125,7 @@ describe('RunsPage', () => {
 
   it('renders error when detail fetch fails', async () => {
     vi.mocked(orchestrationApi.getOrchestrationRun).mockRejectedValue(new Error('Detail fetch failed'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     render(
       <SymbolProvider>
@@ -140,5 +141,7 @@ describe('RunsPage', () => {
     expect(await screen.findByText('Detail fetch failed')).toBeInTheDocument();
     // Verify list is still present
     expect(screen.getByTestId('run-row-2')).toBeInTheDocument();
+    
+    consoleSpy.mockRestore();
   });
 });

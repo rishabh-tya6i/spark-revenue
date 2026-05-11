@@ -29,9 +29,9 @@ const SummaryRenderer: React.FC<{ data: any }> = ({ data }) => {
 
   if (Array.isArray(data)) {
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+      <div className="flex flex-wrap gap-xs">
         {data.map((item, i) => (
-          <span key={i} className="glass-panel text-xs text-mono" style={{ padding: '2px 6px', borderRadius: '4px' }}>
+          <span key={i} className="glass-panel text-xs text-mono p-xs" style={{ borderRadius: '4px' }}>
             {typeof item === 'object' ? <SummaryRenderer data={item} /> : String(item)}
           </span>
         ))}
@@ -40,9 +40,9 @@ const SummaryRenderer: React.FC<{ data: any }> = ({ data }) => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="flex-col gap-sm">
       {Object.entries(data).map(([key, value]) => (
-        <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div key={key} className="flex-col gap-xs">
           <div className="text-xs text-muted text-mono uppercase">{key.replace(/_/g, ' ')}</div>
           <div style={{ paddingLeft: '8px', borderLeft: '1px solid var(--border-subtle)' }}>
             {typeof value === 'object' ? <SummaryRenderer data={value} /> : <span className="text-sm text-mono">{String(value)}</span>}
@@ -107,12 +107,12 @@ const RunsPage: React.FC = () => {
 
   return (
     <PageContainer title="Orchestration Runs">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 180px)' }}>
+      <div className="flex-col gap-md" style={{ height: 'calc(100vh - 180px)' }}>
         
         {/* Toolbar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: 'var(--radius-md)' }}>
+        <div className="flex justify-between items-center">
+          <div className="flex gap-md items-center">
+            <div className="glass-panel flex items-center gap-sm p-xs" style={{ borderRadius: 'var(--radius-md)' }}>
               <Filter size={16} className="text-muted" />
               <select 
                 className="input-void" 
@@ -153,13 +153,13 @@ const RunsPage: React.FC = () => {
         )}
 
         {/* Main Split Layout */}
-        <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>
+        <div className="flex gap-lg flex-1" style={{ minHeight: 0 }}>
           
           {/* Left: Run List */}
-          <Card style={{ flex: 2, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div className="table-container" style={{ flex: 1, overflow: 'auto' }}>
+          <Card className="flex-col" style={{ flex: 2, padding: 0, overflow: 'hidden' }}>
+            <div className="table-container flex-1 overflow-auto">
               <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-card)' }}>
+                <thead className="sticky-header">
                   <tr>
                     <th>ID</th>
                     <th>TYPE</th>
@@ -184,7 +184,7 @@ const RunsPage: React.FC = () => {
                     >
                       <td className="text-mono text-xs">{run.id}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="flex items-center gap-sm">
                           <span className="text-muted">{getRunTypeIcon(run.run_type)}</span>
                           <span className="text-xs text-mono uppercase">{run.run_type}</span>
                         </div>
@@ -196,7 +196,7 @@ const RunsPage: React.FC = () => {
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div className="flex gap-xs">
                           <Badge variant="primary" title="Ready">{run.ready_symbols_count}</Badge>
                           <Badge variant="success" title="Success">{run.success_count}</Badge>
                           {run.failed_count > 0 && <Badge variant="danger" title="Failed">{run.failed_count}</Badge>}
@@ -219,12 +219,12 @@ const RunsPage: React.FC = () => {
           </Card>
 
           {/* Right: Detail Panel */}
-          <Card style={{ flex: 1.5, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Card className="flex-col" style={{ flex: 1.5, overflow: 'hidden' }}>
             {!selectedRun ? (
               <EmptyState message="Select a run to view details" icon={<History size={48} strokeWidth={1} style={{ opacity: 0.5 }} />} />
             ) : (
-              <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', padding: '2px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className="flex-col gap-lg p-xs" style={{ flex: 1, overflow: 'auto' }}>
+                <div className="flex justify-between items-start">
                   <div>
                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>Run #{selectedRun.id}</h3>
                     <div className="text-xs text-muted text-mono uppercase" style={{ marginTop: '4px' }}>
@@ -235,8 +235,8 @@ const RunsPage: React.FC = () => {
                 </div>
 
                 {selectedRun.reason && (
-                  <div className="glass-panel" style={{ padding: '12px', borderLeft: '4px solid var(--danger)' }}>
-                    <div className="text-xs text-muted text-mono" style={{ marginBottom: '4px' }}>FAILURE REASON</div>
+                  <div className="glass-panel p-sm" style={{ borderLeft: '4px solid var(--danger)' }}>
+                    <div className="text-xs text-muted text-mono mb-xs">FAILURE REASON</div>
                     <div className="text-sm">{selectedRun.reason}</div>
                   </div>
                 )}
@@ -249,10 +249,10 @@ const RunsPage: React.FC = () => {
                 </KeyValueGrid>
 
                 <div>
-                  <div className="text-xs text-muted text-mono" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="text-xs text-muted text-mono mb-md flex items-center gap-sm">
                     <Clock size={14} /> EXECUTION SUMMARY
                   </div>
-                  <div className="glass-panel" style={{ padding: '16px' }}>
+                  <div className="glass-panel p-md">
                     {detailLoading ? (
                       <div className="text-center py-8"><RefreshCw className="animate-spin text-muted" /></div>
                     ) : (

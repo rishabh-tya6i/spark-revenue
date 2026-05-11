@@ -19,7 +19,7 @@ const ResultRenderer: React.FC<{ res: any }> = ({ res }) => {
 
   if (res.error) {
     return (
-      <div className="glass-panel text-danger" style={{ marginTop: '16px', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="glass-panel text-danger mt-md p-sm flex items-center gap-sm">
         <AlertCircle size={16} />
         <span className="text-sm"><strong>Error:</strong> {res.error}</span>
       </div>
@@ -27,8 +27,8 @@ const ResultRenderer: React.FC<{ res: any }> = ({ res }) => {
   }
 
   return (
-    <div className="glass-panel" style={{ marginTop: '16px', padding: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <div className="glass-panel mt-md p-md">
+      <div className="flex justify-between items-center mb-md">
         <StatusBadge type="run" status={res.status || 'success'} />
         {res.run_record_id && <span className="text-xs text-muted text-mono">RUN ID: {res.run_record_id}</span>}
       </div>
@@ -100,14 +100,14 @@ const OperationsPage: React.FC = () => {
 
   return (
     <PageContainer title="Operator Console">
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+      <div className="grid gap-lg" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
         {actions.map(action => (
-          <Card key={action.id} style={{ display: 'flex', flexDirection: 'column' }}>
+          <Card key={action.id} className="flex-col">
             <SectionHeader title={action.title} icon={action.icon} />
-            <p className="text-sm text-muted" style={{ marginBottom: '24px', flex: 1 }}>
+            <p className="text-sm text-muted mb-lg flex-1">
               {action.description}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="flex-col gap-md">
               <div className="text-xs text-muted text-mono uppercase">TARGET INTERVAL: {interval}</div>
               <Button 
                 variant="primary" 
