@@ -32,7 +32,20 @@ _rl_model_cache = {}
 def get_rl_model(symbol: str, interval: str):
     cache_key = f"{symbol}_{interval}"
     if cache_key not in _rl_model_cache:
-        model_path = os.path.join(settings.RL_AGENT_MODEL_DIR, f"{symbol}_{interval}_ppo.zip")
+        # 1. Try registry first
+        model_path = None
+        from ..orchestration.model_registry import get_latest_active_model
+        with SessionLocal() as db:
+            record = get_latest_active_model(db, symbol, interval, "rl_agent")
+            if record:
+                model_path = record.artifact_path
+                logger.info(f"Resolved latest active RL model from registry: {model_path}")
+        
+        # 2. Fallback to naming convention
+        if not model_path:
+            model_path = os.path.join(settings.RL_AGENT_MODEL_DIR, f"{symbol}_{interval}_ppo.zip")
+            logger.info(f"Falling back to naming convention for RL model path: {model_path}")
+
         if not os.path.exists(model_path):
             raise HTTPException(status_code=404, detail=f"RL Model not found for {cache_key}")
         
@@ -41,11 +54,10 @@ def get_rl_model(symbol: str, interval: str):
     
     return _rl_model_cache[cache_key]
 
-@router.post("/rl/action", response_model=RLActionResponse)
-async def get_rl_action(request: RLActionRequest):
-    symbol = request.symbol
-    interval = request.interval
-
+def get_rl_action_core(symbol: str, interval: str) -> RLActionResponse:
+    """
+    Internal helper to perform RL action prediction for a single symbol.
+    """
     # 1. Fetch latest state
     with SessionLocal() as session:
         # We need latest features. Reuse load_rl_data logic for consistency.
@@ -53,7 +65,7 @@ async def get_rl_action(request: RLActionRequest):
         features, _ = load_rl_data(session, symbol, interval)
         
         if features.size == 0:
-            raise HTTPException(status_code=400, detail="Not enough feature history for RL inference")
+            raise ValueError(f"Not enough feature history for {symbol} to make RL inference")
 
         last_feat = features[-1]
         # Current position for stateless inference is 0 (flat)
@@ -72,3 +84,13 @@ async def get_rl_action(request: RLActionRequest):
         action_index=int(action_idx),
         policy_version="v1"
     )
+
+@router.post("/rl/action", response_model=RLActionResponse)
+async def get_rl_action(request: RLActionRequest):
+    try:
+        return get_rl_action_core(request.symbol, request.interval)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"RL action failed for {request.symbol}")
+        raise HTTPException(status_code=500, detail=str(e))

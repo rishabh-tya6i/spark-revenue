@@ -9,6 +9,7 @@ from .price_model.service import router as price_router
 from .rl.service import router as rl_router
 from .orchestration.app import router as orchestration_router
 from .execution.app import router as execution_router
+from .instruments.app import router as instruments_router
 
 setup_logging()
 app = FastAPI(title="Spark Revenue AI Trading OS Backend")
@@ -24,6 +25,7 @@ app.include_router(price_router, tags=["prediction"])
 app.include_router(rl_router, tags=["rl"])
 app.include_router(orchestration_router, tags=["orchestration"])
 app.include_router(execution_router, tags=["execution"])
+app.include_router(instruments_router, tags=["instruments"])
 
 @app.get("/health")
 async def health():

@@ -37,6 +37,7 @@ class FeatureStore:
             # 1. Fetch OHLC bars
             bars = session.query(OhlcBar).filter(
                 OhlcBar.symbol == symbol,
+                OhlcBar.interval == interval,
                 OhlcBar.end_ts >= start,
                 OhlcBar.end_ts <= end
             ).order_by(OhlcBar.start_ts.asc()).all()

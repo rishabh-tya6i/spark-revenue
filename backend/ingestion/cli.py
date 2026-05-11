@@ -6,6 +6,8 @@ import logging
 from .ohlc_ingestor import OhlcIngestor
 from .zerodha_client import ZerodhaClient
 from .binance_client import BinanceClient
+from .upstox_client import UpstoxMarketDataClient
+from ..db import SessionLocal
 from ..config import settings
 from ..logging_config import setup_logging
 
@@ -17,7 +19,7 @@ def main():
 
     # Backfill command
     backfill_parser = subparsers.add_parser("backfill", help="Backfill historical OHLC data")
-    backfill_parser.add_argument("--source", choices=["zerodha", "binance"], required=True, help="Data source")
+    backfill_parser.add_argument("--source", choices=["zerodha", "binance", "upstox"], required=True, help="Data source")
     backfill_parser.add_argument("--symbol", required=True, help="Symbol to backfill (e.g. NIFTY, BTCUSDT)")
     backfill_parser.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
     backfill_parser.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
@@ -47,6 +49,10 @@ def main():
                 api_key=settings.BINANCE_API_KEY,
                 api_secret=settings.BINANCE_API_SECRET
             )
+        elif args.source == "upstox":
+            # Upstox client needs DB session for instrument resolution
+            db_session = SessionLocal()
+            client = UpstoxMarketDataClient(db_session=db_session)
         else:
             logger.error(f"Unsupported source: {args.source}")
             sys.exit(1)
@@ -63,6 +69,9 @@ def main():
         except Exception as e:
             logger.error(f"Ingestion failed: {str(e)}")
             sys.exit(1)
+        finally:
+            if args.source == "upstox":
+                db_session.close()
 
     else:
         parser.print_help()

@@ -201,6 +201,122 @@ class ExecutionPnL(Base):
     realized_pnl = Column(Float, nullable=False)
     equity = Column(Float, nullable=False)         # cash + sum(position market value)
 
+class InstrumentMaster(Base):
+    __tablename__ = "instrument_master"
+
+    id = Column(Integer, primary_key=True, index=True)
+    broker = Column(String, nullable=False, default="upstox")
+    instrument_key = Column(String, nullable=False, unique=True, index=True)
+
+    segment = Column(String, nullable=False, index=True)          # e.g. NSE_INDEX, BSE_INDEX
+    exchange = Column(String, nullable=False, index=True)         # e.g. NSE, BSE
+    instrument_type = Column(String, nullable=False, index=True)  # e.g. INDEX, EQ, FUT, CE, PE
+
+    trading_symbol = Column(String, nullable=True, index=True)    # e.g. NIFTY 50, SENSEX
+    name = Column(String, nullable=True, index=True)              # display name
+    short_name = Column(String, nullable=True)
+
+    underlying_symbol = Column(String, nullable=True)
+    underlying_key = Column(String, nullable=True)
+
+    expiry = Column(DateTime(timezone=True), nullable=True)
+    strike_price = Column(Float, nullable=True)
+    tick_size = Column(Float, nullable=True)
+    lot_size = Column(Float, nullable=True)
+
+    raw_json = Column(String, nullable=True)  # serialized source payload for debugging
+    is_active = Column(Integer, nullable=False, default=1)
+
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+    updated_ts = Column(DateTime(timezone=True), nullable=False)
+
+class TrainedModelRecord(Base):
+    __tablename__ = "trained_model_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, index=True, nullable=False)
+    model_type = Column(String, index=True, nullable=False)   # "price_model" or "rl_agent"
+
+    artifact_path = Column(String, nullable=False)
+    status = Column(String, nullable=False)                   # "success" or "failed"
+    is_active = Column(Integer, nullable=False, default=1)    # 1 active, 0 inactive
+
+    trainer_run_id = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index('idx_model_registry_lookup', 'symbol', 'interval', 'model_type', 'created_ts'),
+    )
+
+class OrchestrationRunRecord(Base):
+    __tablename__ = "orchestration_run_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_type = Column(String, index=True, nullable=False)   # "train", "inference", "execution", "cycle"
+    mode = Column(String, nullable=True)
+    interval = Column(String, nullable=True)
+
+    status = Column(String, nullable=False)                 # "completed", "skipped", "failed"
+    reason = Column(String, nullable=True)
+
+    selected_symbols_count = Column(Integer, nullable=False, default=0)
+    ready_symbols_count = Column(Integer, nullable=False, default=0)
+    success_count = Column(Integer, nullable=False, default=0)
+    skipped_count = Column(Integer, nullable=False, default=0)
+    failed_count = Column(Integer, nullable=False, default=0)
+
+    summary_json = Column(String, nullable=False)           # serialized compact summary payload (using String for consistency)
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index('idx_orchestration_run_type_created', 'run_type', 'created_ts'),
+    )
+
+class ExecutionOverrideRecord(Base):
+    __tablename__ = "execution_override_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, index=True, nullable=False)
+
+    override_action = Column(String, nullable=False)   # "BUY", "SELL", "HOLD", "SKIP"
+    reason = Column(String, nullable=True)
+
+    is_active = Column(Integer, nullable=False, default=1)
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+    cleared_ts = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index('idx_execution_override_lookup', 'symbol', 'interval', 'is_active', 'created_ts'),
+    )
+
+class ExecutionDispatchRecord(Base):
+    __tablename__ = "execution_dispatch_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    symbol = Column(String, index=True, nullable=False)
+    interval = Column(String, index=True, nullable=False)
+
+    source_type = Column(String, nullable=False)      # "decision" or "override"
+    source_id = Column(Integer, nullable=False)       # decision_id or override_id
+
+    dispatched_action = Column(String, nullable=False)  # "BUY", "SELL", "HOLD", "SKIP"
+    status = Column(String, nullable=False)             # "executed", "skipped", "failed"
+
+    order_id = Column(Integer, nullable=True)           # if an order was created
+    reason = Column(String, nullable=True)              # e.g. duplicate/manual_override_skip/no_trade_generated
+
+    created_ts = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('source_type', 'source_id', name='uq_dispatch_source'),
+        Index('idx_dispatch_symbol_interval_created', 'symbol', 'interval', 'created_ts'),
+    )
+
 def get_db():
     db = SessionLocal()
     try:

@@ -47,13 +47,16 @@ alembic upgrade head
 ## Usage
 
 ### Historical Backfill CLI
-You can use the ingestion CLI to backfill historical data. Note that current implementations of Zerodha and Binance clients use **stub data**.
+You can use the ingestion CLI to backfill historical data.
 
 ```bash
-# Backfill Zerodha data
+# Backfill Upstox data (Requires instrument sync first)
+python -m backend.ingestion.cli backfill --source upstox --symbol NIFTY --start 2024-05-01 --end 2024-05-15 --interval 5m
+
+# Backfill Zerodha data (Stubbed)
 python -m backend.ingestion.cli backfill --source zerodha --symbol NIFTY --start 2024-01-01 --end 2024-01-31 --interval 5m
 
-# Backfill Binance data
+# Backfill Binance data (Stubbed)
 python -m backend.ingestion.cli backfill --source binance --symbol BTCUSDT --start 2024-01-01 --end 2024-01-31 --interval 5m
 ```
 
@@ -310,3 +313,352 @@ python -m backend.execution.cli execution-apply-decision --decision-id 123
  
 #### Implementation Note
 This engine is designed as a layer over a pluggable "Broker Interface." Future updates will allow toggling `EXECUTION_MODE` to `live` to route these same decisions to Zerodha or Binance.
+### 16. Instrument Catalog & Symbol Resolution (v1)
+
+The Instrument module manages the master data for trading instruments, primarily focusing on Upstox. It provides a reliable way to sync instrument definitions and resolve human-friendly symbols (like `NIFTY`) to broker-specific keys.
+
+#### Key Features
+- **Upstox Sync**: Fetches and parses the full Upstox instrument master JSON, filtering for relevant segments (e.g., `NSE_INDEX`, `BSE_INDEX`).
+- **Symbol Resolution**: Translates aliases like `NIFTY` or `SENSEX` into their respective `instrument_key` for use in data ingestion and execution.
+- **Persistence**: Stores instrument metadata including tick size, lot size, expiry, and strike price in Postgres.
+
+#### CLI Usage
+- **Sync Instruments**:
+  ```bash
+  python -m backend.instruments.cli sync-upstox-instruments --segments NSE_INDEX,BSE_INDEX
+  ```
+- **List Instruments**:
+  ```bash
+  python -m backend.instruments.cli list-instruments --segment NSE_INDEX --limit 5
+  ```
+- **Resolve Symbol**:
+  ```bash
+  python -m backend.instruments.cli resolve-symbol --symbol NIFTY
+  ```
+
+#### API Endpoints
+- `POST /instruments/sync`: Triggers a sync from Upstox.
+- `GET /instruments`: Lists stored instruments with optional filters.
+- `GET /instruments/resolve`: Resolves a symbol string to an instrument record.
+
+### 17. Upstox Historical Candle Ingestion (v1)
+
+This module enables historical market data backfill from Upstox Historical Candle Data V3. It integrates with the Instrument Catalog for symbol resolution and stores data in the unified `ohlc_bars` table.
+
+#### Key Features
+- **V3 API Support**: Uses Upstox's latest historical candle endpoint.
+- **Symbol Mapping**: Automatically resolves symbols like `NIFTY` to internal Upstox keys via `instrument_master`.
+- **Interval Normalization**: Maps standard intervals (`1m`, `5m`, `1h`, `1d`) to broker-specific formats.
+
+#### Workflow
+1. **Sync Instruments** (Must be done at least once):
+   ```bash
+   python -m backend.instruments.cli sync-upstox-instruments --segments NSE_INDEX,BSE_INDEX
+   ```
+2. **Backfill Candles**:
+   ```bash
+   python -m backend.ingestion.cli backfill --source upstox --symbol NIFTY --start 2024-05-01 --end 2024-05-15 --interval 5m
+   ```
+### 18. Dynamic Training Universe (v1)
+
+The Orchestration module supports dynamic training universe selection, allowing the system to derive the list of symbols to train from either explicit configuration or the synced instrument catalog.
+
+#### Key Features
+- **Selection Modes**:
+  - `explicit`: Uses `TRAIN_SYMBOLS` or `UPSTOX_DEFAULT_SYMBOLS`.
+  - `catalog_filter`: Queries `instrument_master` based on segments and instrument types.
+- **Symbol Normalization**: Automatically maps broker-specific names (e.g., `NIFTY 50`) to internal repo symbols (`NIFTY`).
+- **Orchestration Wiring**: Prefect flows automatically use the dynamic universe if no explicit symbols are provided.
+
+#### Configuration
+Set the following in your `.env`:
+- `TRAIN_UNIVERSE_MODE`: `explicit` or `catalog_filter`.
+- `TRAIN_MAX_SYMBOLS`: Maximum symbols to select in catalog mode.
+- `UPSTOX_UNIVERSE_INSTRUMENT_TYPES`: Comma-separated types (e.g., `INDEX`).
+
+#### CLI Usage
+- **Show Current Universe**:
+  ```bash
+  python -m backend.orchestration.cli show-universe --mode explicit
+  python -m backend.orchestration.cli show-universe --mode catalog_filter
+  ```
+- **Run Training with Dynamic Universe**:
+  ```bash
+  # Automatically selects symbols based on TRAIN_UNIVERSE_MODE
+  python -m backend.orchestration.cli train-price-models
+  ```
+
+#### API Endpoints
+- `GET /orchestration/universe`: Returns the currently selected symbols and mode.
+
+### 19. Training Data Preparation (v1)
+
+The Orchestration module includes a dedicated pipeline to prepare historical data (OHLC and features) for the selected training universe. This ensures that models are always trained on the most recent data snapshots.
+
+#### Key Features
+- **Automated Workflow**: Combines instrument sync, universe selection, OHLC backfill, and feature calculation into a single call.
+- **Fail-Safe Loop**: If one symbol fails to backfill, the pipeline continues with the remaining symbols and reports the errors in the summary.
+- **Dynamic Window**: Supports configurable lookback periods (default 30 days).
+
+#### CLI Usage
+- **Run Data Preparation**:
+  ```bash
+  python -m backend.orchestration.cli prepare-training-data --mode catalog_filter --lookback-days 30
+  ```
+- **Run Daily Orchestration (Prep + Train)**:
+  ```bash
+  python -m backend.orchestration.cli run-daily
+  ```
+
+- `POST /orchestration/prepare-training-data`: Triggers the data preparation pipeline and returns a detailed summary of synced instruments and backfill statuses.
+
+### 20. Trainability Checks (v1)
+
+The system distinguishes between the **selected universe** (symbols chosen for training) and the **trainable universe** (symbols that have sufficient data for training). This prevents training failures due to missing or insufficient historical data.
+
+#### Key Features
+- **Deterministic Thresholds**: Minimum data requirements are automatically calculated from model architecture settings (input window + prediction horizon).
+- **Safe Skipping**: The daily orchestrated flow automatically filters out non-trainable symbols before starting the model training phase.
+- **Detailed Inspection**: CLI and API tools provide transparency into why specific symbols are skipped (e.g., `insufficient_ohlc` or `insufficient_features`).
+
+#### CLI Usage
+- **Inspect Trainability**:
+  ```bash
+  python -m backend.orchestration.cli show-trainability --mode catalog_filter --interval 5m
+  ```
+- **Review Preparation with Trainability**:
+  ```bash
+  python -m backend.orchestration.cli prepare-training-data --mode catalog_filter
+  ```
+
+- `GET /orchestration/trainability`: Returns a detailed breakdown of which symbols are ready for training and the underlying data counts for each.
+
+### 21. Structured Training Execution (v1)
+
+The orchestration layer provides a structured reporting mechanism for training runs. Instead of simple pass/fail logs, every training execution produces a machine-readable summary of the entire universe's status.
+
+#### Key Features
+- **Unified Summary**: Reports total, success, and failure counts for both Price Models and RL Agents in a single object.
+- **Per-Symbol Details**: Captures the exact artifact path (e.g., `.pt` or `.zip` file) for every successful run and detailed error messages for failed ones.
+- **Trainable Filtering**: The `train-trainable` workflow combines data preparation and training into a single optimized pipeline.
+
+#### CLI Usage
+- **Run Training for Ready Symbols**:
+  ```bash
+  python -m backend.orchestration.cli train-trainable --mode catalog_filter --lookback-days 30
+  ```
+- **Execute Daily Flow with Summary**:
+  ```bash
+  python -m backend.orchestration.cli run-daily
+  ```
+
+#### API Endpoints
+- `POST /orchestration/train-trainable`: Triggers a full "Prep -> Filter -> Train" pipeline and returns the complete structured execution report.
+- `POST /orchestration/run-daily`: Now returns the same enhanced structured result format as the CLI.
+
+### 22. Model Registry (v1)
+
+The system includes a lightweight Model Registry to track successful training runs and resolve the current active model for each symbol and interval.
+
+#### Key Features
+- **Automatic Registration**: Successful training runs are automatically recorded in the `trained_model_records` table.
+- **Latest Model Resolution**: The registry automatically deactivates older models when a new successful model is registered for the same `(symbol, interval, model_type)`.
+- **Inference Integration**: Inference services (Price Model and RL) query the registry to resolve the latest active model path, with a fallback to standard naming conventions.
+
+#### CLI Usage
+- **List All Registered Models**:
+  ```bash
+  python -m backend.orchestration.cli list-models --symbol NIFTY --active-only
+  ```
+- **Show Latest Active Model Details**:
+  ```bash
+  python -m backend.orchestration.cli show-latest-model --symbol NIFTY --interval 5m --model-type price_model
+  ```
+
+#### API Endpoints
+- `GET /orchestration/models`: Returns a filtered list of registered model metadata.
+- `GET /orchestration/models/latest`: Returns the metadata for the single latest active model for a given tuple.
+
+### 23. Universe Inference Orchestration (v1)
+
+The system can orchestrate inference across the entire selected universe in a single flow, ensuring that only "inference-ready" symbols are processed.
+
+#### Readiness Criteria
+A symbol is considered **inference-ready** if:
+1. It has an **active Price Model** in the registry.
+2. It has an **active RL Agent** in the registry.
+3. It has **sufficient feature history** (e.g., last 60 minutes of joined OHLC and features) to support the models.
+
+#### CLI Usage
+- **Inspect Inference Readiness**:
+  ```bash
+  python -m backend.orchestration.cli show-inference-readiness --mode catalog_filter --interval 5m
+  ```
+- **Run Orchestrated Universe Inference**:
+  ```bash
+  python -m backend.orchestration.cli run-universe-inference --mode catalog_filter --interval 5m
+  ```
+
+#### API Endpoints
+- `GET /orchestration/inference-readiness`: Returns readiness details for all symbols in the universe.
+- `POST /orchestration/run-inference`: Triggers price prediction, RL action generation, and decision engine computation for all ready symbols.
+
+### 24. Universe Paper Execution Orchestration (v1)
+
+The system can orchestrate paper execution across the selected universe using the **latest available decisions**. It ensures that execution only happens for symbols that have actionable results.
+
+#### Readiness Criteria
+A symbol is considered **execution-ready** if:
+1. It has a **latest stored DecisionRecord**.
+2. Its `rl_action` is actionable (default: `BUY` or `SELL`). `HOLD` decisions are skipped by default.
+
+#### CLI Usage
+- **Inspect Execution Readiness**:
+  ```bash
+  python -m backend.orchestration.cli show-execution-readiness --mode catalog_filter --interval 5m
+  ```
+- **Run Orchestrated Universe Execution**:
+  ```bash
+  python -m backend.orchestration.cli run-universe-execution --mode catalog_filter --interval 5m
+  ```
+
+#### API Endpoints
+- `GET /orchestration/execution-readiness`: Returns execution readiness details for all symbols in the universe.
+- `POST /orchestration/run-execution`: Triggers paper execution for all symbols with actionable latest decisions.
+
+### 25. End-to-End Operational Cycle Orchestration (v1)
+
+The system can run a single unified **operational cycle** that wires inference and execution together for the current dynamic universe.
+
+#### Cycle Workflow
+1. **Resolve Universe**: Identifies symbols in the current training universe.
+2. **Inference Readiness**: Filters for symbols with active models and sufficient feature history.
+3. **Run Inference**: Generates price predictions, RL actions, and final decisions.
+4. **Execution Readiness**: Filters for symbols with actionable latest decisions (e.g., BUY/SELL).
+5. **Run Execution**: Executes trades through the paper trading engine.
+6. **Reporting**: Returns a combined, machine-readable report of the entire cycle.
+
+#### CLI Usage
+```bash
+python -m backend.orchestration.cli run-operational-cycle --mode catalog_filter --interval 5m
+```
+- Use `--allow-hold` to process `HOLD` decisions as ready for execution (default is actionable only).
+
+#### API Endpoints
+- `POST /orchestration/run-cycle`: Triggers the full end-to-end operational loop.
+
+### 26. Orchestration Run History (v1)
+
+The system maintains a lightweight history of all top-level orchestration runs. This allows operators to audit what happened during training, inference, execution, and full operational cycles.
+
+#### Features
+- **Compact Summaries**: Persists normalized counts and success/failure metadata.
+- **Run Tracking**: Each orchestration result includes a `run_record_id` for traceability.
+- **Unified Reporting**: Query recent runs across all orchestration types via CLI or API.
+
+#### CLI Usage
+- **List Recent Runs**:
+  ```bash
+  python -m backend.orchestration.cli list-runs --run-type cycle --limit 20
+  ```
+- **Show Specific Run Details**:
+  ```bash
+  python -m backend.orchestration.cli show-run --run-id 123
+  ```
+
+#### API Endpoints
+- `GET /orchestration/runs`: Returns a list of recent orchestration records.
+- `GET /orchestration/runs/{run_id}`: Returns full metadata and the parsed summary for a specific run.
+
+### 27. Operational State Snapshot (v1)
+
+The system provides a compact "latest status snapshot" that aggregates the current state of the dynamic universe, including readiness, model availability, latest decisions, and recent execution activity. This is designed for dashboard consumption and quick operator health checks.
+
+#### CLI Usage
+- **Show Current State**:
+  ```bash
+  python -m backend.orchestration.cli show-state --mode catalog_filter --interval 5m
+  ```
+
+#### API Endpoints
+- `GET /orchestration/state`: Returns the latest operational snapshot. Optional `mode` and `interval` parameters are supported.
+
+#### Key Snapshot Components
+- **Universe**: Selected symbols and their inference/execution readiness.
+- **Models**: Availability of active price models and RL agents.
+- **Decisions**: Summary of latest actionable vs hold/missing decisions.
+- **Execution State**: Lightweight indicator of orders and open positions.
+- **Latest Runs**: Compact reference to the most recent orchestration run of each type.
+ 
+### 28. Execution Guardrails (v1)
+
+The system includes a lightweight safety layer to block or constrain automated paper execution. These guardrails are applied at the orchestration level, ensuring that execution only occurs when global safety conditions are met.
+
+#### CLI Usage
+```bash
+# Inspect current guardrail evaluation for the universe
+python -m backend.orchestration.cli show-execution-guardrails --mode catalog_filter --interval 5m
+
+# Guardrails are automatically applied during execution
+python -m backend.orchestration.cli run-universe-execution --mode catalog_filter --interval 5m
+```
+
+#### Key Features
+- **Global Safety Switch**: Instantly enable or disable all execution via `EXECUTION_ENABLED`.
+- **Action Filtering**: Restrict which RL actions (e.g., `BUY`, `SELL`) are permitted via `EXECUTION_ALLOWED_ACTIONS`.
+- **Volume Capping**: Limit the number of symbols executed in a single run via `EXECUTION_MAX_SYMBOLS_PER_RUN`.
+- **Traceability**: Blocked symbols and reasons (e.g., `max_symbols_cap`, `disallowed_action`) are recorded in run history and API responses.
+
+#### API Endpoints
+- `GET /orchestration/execution-guardrails`: Inspect current guardrail evaluation without side effects.
+- `POST /orchestration/run-execution`: Now includes guardrail details in the result payload.
+
+### 29. Manual Execution Overrides (v1)
+
+Operators can manually override the latest execution intent for a symbol. Overrides are applied after guardrails and before actual paper execution.
+
+#### CLI Usage
+```bash
+# Set a manual override (BUY, SELL, HOLD, SKIP)
+python -m backend.orchestration.cli set-execution-override --symbol NIFTY --interval 5m --action SKIP --reason "Manual pause"
+
+# List active overrides
+python -m backend.orchestration.cli list-execution-overrides --interval 5m
+
+# Clear an active override
+python -m backend.orchestration.cli clear-execution-override --symbol NIFTY --interval 5m
+```
+
+#### Key Features
+- **Operator Control**: Force-skip, force-buy, or force-sell specific symbols.
+- **Non-Destructive**: Does not modify model inference or stored decisions.
+- **Traceability**: Overrides include reasons/notes and are recorded in run history and state snapshots.
+- **Last-Mile Safety**: Overrides act as the final decision layer before order submission.
+
+#### API Endpoints
+- `POST /orchestration/execution-overrides`: Create or update an override.
+- `DELETE /orchestration/execution-overrides`: Clear an active override.
+- `GET /orchestration/execution-overrides`: List active overrides.
+
+### 30. Execution Idempotency + Duplicate Prevention (v1)
+
+The system includes an idempotency layer to prevent redundant paper execution dispatches. This ensures that a specific automated decision or manual override is only dispatched once per operational source.
+
+#### CLI Usage
+```bash
+# List recent execution dispatches
+python -m backend.orchestration.cli list-execution-dispatches --symbol NIFTY --interval 5m
+
+# Duplicate skips are automatically reported in execution runs
+python -m backend.orchestration.cli run-universe-execution --mode catalog_filter --interval 5m
+```
+
+#### Key Features
+- **Source Tracking**: Tracks dispatches using `(source_type, source_id)` identity.
+- **Strict Prevention**: Once a decision ID or override ID is successfully dispatched, subsequent attempts are automatically skipped.
+- **Operational Visibility**: Duplicate skips are flagged in run history, state snapshots, and the dashboard API.
+- **Idempotency Status**: The `execution_dispatch` summary in state snapshots provides real-time visibility into which symbols have already been processed.
+
+#### API Endpoints
+- `GET /orchestration/execution-dispatches`: Lists historical dispatch records.
+- `GET /orchestration/state`: Now includes a `execution_dispatch` block.

@@ -34,6 +34,7 @@ def build_price_model_dataset(
         (OhlcBar.symbol == PriceFeature.symbol) & (OhlcBar.end_ts == PriceFeature.ts)
     ).filter(
         OhlcBar.symbol == symbol,
+        OhlcBar.interval == interval,
         PriceFeature.interval == interval
     ).order_by(OhlcBar.end_ts.asc())
 

@@ -36,7 +36,20 @@ _model_cache = {}
 def get_model(symbol: str, interval: str):
     cache_key = f"{symbol}_{interval}"
     if cache_key not in _model_cache:
-        model_path = os.path.join(settings.PRICE_MODEL_DIR, f"{symbol}_{interval}_latest.pt")
+        # 1. Try registry first
+        model_path = None
+        from ..orchestration.model_registry import get_latest_active_model
+        with SessionLocal() as db:
+            record = get_latest_active_model(db, symbol, interval, "price_model")
+            if record:
+                model_path = record.artifact_path
+                logger.info(f"Resolved latest active model from registry: {model_path}")
+        
+        # 2. Fallback to naming convention
+        if not model_path:
+            model_path = os.path.join(settings.PRICE_MODEL_DIR, f"{symbol}_{interval}_latest.pt")
+            logger.info(f"Falling back to naming convention for model path: {model_path}")
+
         if not os.path.exists(model_path):
             raise HTTPException(status_code=404, detail=f"Model not found for {cache_key}")
         
@@ -47,20 +60,15 @@ def get_model(symbol: str, interval: str):
     
     return _model_cache[cache_key]
 
-@router.post("/predict/price-path", response_model=PricePredictionResponse)
-async def predict_price_path(request: PricePredictionRequest):
-    symbol = request.symbol
-    interval = request.interval
-    horizon = request.horizon or settings.PRICE_MODEL_PREDICTION_HORIZON
+def predict_price_core(symbol: str, interval: str, horizon: Optional[int] = None) -> PricePredictionResponse:
+    """
+    Internal helper to perform price prediction for a single symbol.
+    """
+    horizon = horizon or settings.PRICE_MODEL_PREDICTION_HORIZON
     input_window = settings.PRICE_MODEL_INPUT_WINDOW
 
     # 1. Fetch latest data
     with SessionLocal() as session:
-        # We need the most recent input_window timesteps
-        # We handle this by building a mini dataset with 0 horizon (since we only need X)
-        # But our build_price_model_dataset expects horizon because it builds y.
-        # Let's manually build X here or use a helper.
-        
         query = session.query(
             OhlcBar.close,
             PriceFeature.rsi_14,
@@ -73,18 +81,18 @@ async def predict_price_path(request: PricePredictionRequest):
             (OhlcBar.symbol == PriceFeature.symbol) & (OhlcBar.end_ts == PriceFeature.ts)
         ).filter(
             OhlcBar.symbol == symbol,
+            OhlcBar.interval == interval,
             PriceFeature.interval == interval
         ).order_by(OhlcBar.end_ts.desc()).limit(input_window)
 
         data = query.all()
         if len(data) < input_window:
-            raise HTTPException(status_code=400, detail="Not enough feature history to make prediction")
+            raise ValueError(f"Not enough feature history for {symbol} to make prediction")
 
         # Reverse to get chronological order
         data = data[::-1]
         
-        # Prepare feature vector (same logic as in data.py)
-        # close, rsi_14, vwap, ema_short, ema_long, ts
+        # Prepare feature vector
         df = []
         for d in data:
             df.append({
@@ -99,13 +107,7 @@ async def predict_price_path(request: PricePredictionRequest):
         for i in range(1, len(df)):
             df[i]['log_ret'] = np.log(df[i]['close'] / df[i-1]['close'])
         
-        # Drop first row because it has no log_ret
-        # But wait, our model expects input_window. 
-        # If we need 60 inputs, we need 61 bars.
-        # Let's adjust.
         if len(df) == input_window:
-            # We forgot to fetch one extra for log_ret. 
-            # For v1 simplicity, set first log_ret to 0
             df[0]['log_ret'] = 0.0
 
         feature_cols = ['log_ret', 'rsi_14', 'vwap_ratio', 'ema_short_ratio', 'ema_long_ratio']
@@ -131,3 +133,13 @@ async def predict_price_path(request: PricePredictionRequest):
         probabilities={labels[i]: float(probabilities[i]) for i in range(len(labels))},
         model_version="v1"
     )
+
+@router.post("/predict/price-path", response_model=PricePredictionResponse)
+async def predict_price_path(request: PricePredictionRequest):
+    try:
+        return predict_price_core(request.symbol, request.interval, request.horizon)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Prediction failed for {request.symbol}")
+        raise HTTPException(status_code=500, detail=str(e))

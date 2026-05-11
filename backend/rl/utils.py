@@ -26,6 +26,7 @@ def load_rl_data(session: Session, symbol: str, interval: str) -> tuple[np.ndarr
         (OhlcBar.symbol == PriceFeature.symbol) & (OhlcBar.end_ts == PriceFeature.ts)
     ).filter(
         OhlcBar.symbol == symbol,
+        OhlcBar.interval == interval,
         PriceFeature.interval == interval
     ).order_by(OhlcBar.end_ts.asc())
 

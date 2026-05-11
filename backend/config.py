@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     ZERODHA_API_SECRET: str = "placeholder_secret"
     ZERODHA_ACCESS_TOKEN: Optional[str] = None
 
+    # Upstox Settings
+    UPSTOX_ACCESS_TOKEN: Optional[str] = None
+    UPSTOX_API_BASE_URL: str = "https://api.upstox.com"
+    UPSTOX_INSTRUMENTS_JSON_URL: Optional[str] = None
+    UPSTOX_UNIVERSE_SEGMENTS: Optional[str] = "NSE_INDEX,BSE_INDEX"
+    UPSTOX_DEFAULT_SYMBOLS: Optional[str] = "NIFTY,SENSEX"
+    UPSTOX_HISTORICAL_API_VERSION: str = "v3"
+    UPSTOX_UNIVERSE_INSTRUMENT_TYPES: Optional[str] = "INDEX"
+
     # Binance Settings
     BINANCE_API_KEY: str = "placeholder_key"
     BINANCE_API_SECRET: str = "placeholder_secret"
@@ -63,8 +72,13 @@ class Settings(BaseSettings):
     
     # Training / Orchestration Settings
     TRAIN_SYMBOLS: Optional[str] = None  # Comma-separated, e.g. "BTCUSDT,ETHUSDT"
+    TRAIN_UNIVERSE_MODE: str = "explicit"   # "explicit" or "catalog_filter"
+    TRAIN_MAX_SYMBOLS: int = 10
+    TRAIN_LOOKBACK_DAYS: int = 30
+    TRAIN_PREPARE_INTERVAL: Optional[str] = None
     TRAIN_DEFAULT_INTERVAL: str = "5m"
     TRAIN_DAILY_RUN_HOUR_UTC: int = 3  # e.g., run at 03:00 UTC
+    TRAINABILITY_MIN_BUFFER_BARS: int = 5
 
     # Execution / Paper Trading Settings
     EXECUTION_MODE: str = "paper"  # "paper" or "live"
@@ -72,6 +86,15 @@ class Settings(BaseSettings):
     EXECUTION_BASE_CURRENCY: str = "USD"
     EXECUTION_MAX_POSITION_PER_SYMBOL: float = 1.0        # Max units (e.g., 1 BTC)
     EXECUTION_MAX_NOTIONAL_PER_SYMBOL: float = 20000.0    # In base currency
+    
+    # Global Operational Guardrails
+    EXECUTION_ENABLED: bool = True
+    EXECUTION_MAX_SYMBOLS_PER_RUN: int = 5
+    EXECUTION_ALLOWED_ACTIONS: Optional[str] = "BUY,SELL"
+    
+    # Staleness Controls
+    EXECUTION_MAX_DECISION_AGE_MINUTES: int = 30
+    EXECUTION_MAX_OVERRIDE_AGE_MINUTES: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",

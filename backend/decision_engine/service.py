@@ -25,7 +25,7 @@ class DecisionEngineService:
         with self.session_factory() as session:
             # 1. Sentiment: Last 10 items
             recent_sentiments = session.query(NewsSentiment).order_by(
-                NewsSentiment.timestamp.desc()
+                NewsSentiment.created_ts.desc()
             ).limit(10).all()
             
             # 2. Options: Latest signal
@@ -130,24 +130,34 @@ class DecisionEngineService:
         with self.session_factory() as session:
             return session.query(AlertRecord).order_by(AlertRecord.timestamp.desc()).limit(limit).all()
 
+    def compute_decision_core(self, symbol: str, interval: str) -> DecisionResponse:
+        """
+        Internal core logic to compute and store a decision, including alert generation.
+        """
+        decision = self.compute_and_store_decision(symbol, interval)
+        alert_record = self.generate_alert_from_decision(decision)
+        
+        alert_json = None
+        if alert_record:
+            alert_json = {
+                "alert_type": alert_record.alert_type,
+                "message": alert_record.message,
+                "importance": alert_record.importance
+            }
+            
+        return DecisionResponse(decision=decision, alert=alert_json)
+
 # Router
 router = APIRouter()
 
 @router.post("/decision/compute", response_model=DecisionResponse)
 async def compute_decision(request: DecisionRequest):
     service = DecisionEngineService()
-    decision = service.compute_and_store_decision(request.symbol, request.interval)
-    alert_record = service.generate_alert_from_decision(decision)
-    
-    alert_json = None
-    if alert_record:
-        alert_json = {
-            "alert_type": alert_record.alert_type,
-            "message": alert_record.message,
-            "importance": alert_record.importance
-        }
-        
-    return DecisionResponse(decision=decision, alert=alert_json)
+    try:
+        return service.compute_decision_core(request.symbol, request.interval)
+    except Exception as e:
+        logger.exception(f"Decision computation failed for {request.symbol}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/decision/latest", response_model=FusedDecisionOut)
 async def get_latest_decision(symbol: str, interval: str = "5m"):

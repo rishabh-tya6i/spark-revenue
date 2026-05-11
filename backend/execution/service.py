@@ -38,8 +38,11 @@ class ExecutionService:
             logger.info(f"Created default execution account with balance {initial_balance}")
         return account
 
-    def get_latest_market_price(self, symbol: str) -> float:
-        bar = self.db.query(OhlcBar).filter(OhlcBar.symbol == symbol).order_by(desc(OhlcBar.end_ts)).first()
+    def get_latest_market_price(self, symbol: str, interval: str = "5m") -> float:
+        bar = self.db.query(OhlcBar).filter(
+            OhlcBar.symbol == symbol,
+            OhlcBar.interval == interval,
+        ).order_by(desc(OhlcBar.end_ts)).first()
         if not bar:
             logger.warning(f"No price data found for {symbol}, using 0.0")
             return 0.0
@@ -62,7 +65,7 @@ class ExecutionService:
             logger.info(f"Decision {decision_id} resulted in NO_TRADE (action: {decision.rl_action})")
             return None
 
-        price = self.get_latest_market_price(decision.symbol)
+        price = self.get_latest_market_price(decision.symbol, decision.interval or settings.BACKTEST_DEFAULT_INTERVAL)
         if price <= 0:
             logger.error(f"Cannot execute trade for {decision.symbol}: invalid price {price}")
             return None
@@ -124,6 +127,78 @@ class ExecutionService:
         
         return order
 
+    def execute_manual_action(self, account_id: int, symbol: str, side: str, interval: str = "5m", decision_id: Optional[int] = None) -> Optional[ExecutionOrder]:
+        """
+        Executes a manual override action (BUY/SELL) for a symbol.
+        """
+        side = side.upper()
+        if side not in ["BUY", "SELL"]:
+            logger.error(f"Invalid manual side: {side}")
+            return None
+
+        qty = 1.0 # Default 1 unit for v1
+        price = self.get_latest_market_price(symbol, interval)
+        if price <= 0:
+            logger.error(f"Cannot execute manual trade for {symbol}: invalid price {price}")
+            return None
+
+        account = self.db.query(ExecutionAccount).filter(ExecutionAccount.id == account_id).first()
+        position = self.db.query(ExecutionPosition).filter(
+            ExecutionPosition.account_id == account_id,
+            ExecutionPosition.symbol == symbol
+        ).first()
+
+        current_qty = position.quantity if position else 0.0
+        current_avg_price = position.avg_price if position else 0.0
+
+        new_qty, new_avg_price, new_cash, realized_pnl = self.engine.apply_order(
+            side=side,
+            quantity=qty,
+            price=price,
+            current_qty=current_qty,
+            current_avg_price=current_avg_price,
+            cash_balance=account.cash_balance
+        )
+
+        now = datetime.now(timezone.utc)
+        
+        # Create Order
+        order = ExecutionOrder(
+            account_id=account_id,
+            symbol=symbol,
+            side=side,
+            quantity=qty,
+            price=price,
+            decision_id=decision_id,
+            created_ts=now
+        )
+        self.db.add(order)
+
+        # Update Position
+        if not position:
+            position = ExecutionPosition(
+                account_id=account_id,
+                symbol=symbol,
+                quantity=new_qty,
+                avg_price=new_avg_price,
+                updated_ts=now
+            )
+            self.db.add(position)
+        else:
+            position.quantity = new_qty
+            position.avg_price = new_avg_price
+            position.updated_ts = now
+
+        # Update Account
+        account.cash_balance = new_cash
+        account.updated_ts = now
+
+        self.db.commit()
+        self.db.refresh(order)
+        logger.info(f"Executed MANUAL {side} {qty} {symbol} @ {price} for account {account_id}")
+        
+        return order
+
     def get_account_snapshot(self, account_id: int) -> AccountSnapshotOut:
         account = self.db.query(ExecutionAccount).filter(ExecutionAccount.id == account_id).first()
         positions_orm = self.db.query(ExecutionPosition).filter(ExecutionPosition.account_id == account_id).all()
@@ -135,7 +210,7 @@ class ExecutionService:
         for p in positions_orm:
             if p.quantity == 0:
                 continue
-            mkt_price = self.get_latest_market_price(p.symbol)
+            mkt_price = self.get_latest_market_price(p.symbol, settings.BACKTEST_DEFAULT_INTERVAL)
             upnl = compute_unrealized_pnl(p.quantity, p.avg_price, mkt_price)
             unrealized_pnl_total += upnl
             market_value_total += (p.quantity * mkt_price)

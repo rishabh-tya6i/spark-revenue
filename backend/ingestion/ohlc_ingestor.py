@@ -1,8 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
-from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert
-from typing import List
 
 from .schemas import BaseMarketDataClient, OhlcBarIn
 from ..db import OhlcBar, SessionLocal
@@ -37,30 +34,21 @@ class OhlcIngestor:
             logger.info(f"No data returned for {symbol}")
             return
 
-        stmt = insert(OhlcBar)
-        
-        # Build values for bulk upsert
-        # We need a unique constraint or conflict target. 
-        # Since we haven't defined a unique constraint in the model (e.g. symbol + start_ts), 
-        # we'll use symbol and start_ts as the conflict target if we added a unique constraint.
-        # For now, let's assume we want to avoid duplicates by checking (symbol, start_ts).
-        
         count = 0
         with self.session_factory() as session:
             for bar in bars:
-                # Manual upsert logic (check existence first) - replace with bulk if unique constraint added
                 existing = session.query(OhlcBar).filter(
                     OhlcBar.symbol == bar.symbol,
-                    OhlcBar.start_ts == bar.start_ts
+                    OhlcBar.interval == interval,
+                    OhlcBar.start_ts == bar.start_ts,
                 ).first()
-                
+
                 if existing:
-                    # Update existing record
                     for key, value in bar.model_dump().items():
                         setattr(existing, key, value)
+                    existing.interval = interval
                 else:
-                    # Create new record
-                    new_bar = OhlcBar(**bar.model_dump())
+                    new_bar = OhlcBar(**bar.model_dump(), interval=interval)
                     session.add(new_bar)
                 count += 1
             
