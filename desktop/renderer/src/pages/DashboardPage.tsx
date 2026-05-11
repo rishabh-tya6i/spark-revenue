@@ -3,8 +3,10 @@ import { useSymbol } from '../context/SymbolContext';
 import { getLatestDecision, FusedDecisionDTO } from '../api/decisionApi';
 import { getOptionsSignal, OptionSignalOut } from '../api/optionsApi';
 import { getLatestSentiment, NewsSentimentOut } from '../api/sentimentApi';
-import TopBar from '../components/TopBar';
-import { TrendingUp, TrendingDown, Minus, Info, MessageSquare, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, MessageSquare, Activity } from 'lucide-react';
+import PageContainer from '../components/layout/PageContainer';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 
 const DashboardPage: React.FC = () => {
   const { symbol, interval } = useSymbol();
@@ -39,107 +41,105 @@ const DashboardPage: React.FC = () => {
     return () => clearInterval(poll);
   }, [symbol, interval]);
 
-  const getDecisionClass = (label: string) => {
+  const getBadgeVariant = (label: string): 'primary' | 'success' | 'danger' | 'muted' => {
     const l = label.toLowerCase();
-    if (l.includes('strong_bullish')) return 'decision-strong-bullish';
-    if (l.includes('bullish')) return 'decision-bullish';
-    if (l.includes('strong_bearish')) return 'decision-strong-bearish';
-    if (l.includes('bearish')) return 'decision-bearish';
-    return 'decision-neutral';
+    if (l.includes('bullish')) return 'success';
+    if (l.includes('bearish')) return 'danger';
+    if (l.includes('neutral')) return 'muted';
+    return 'primary';
   };
 
-  if (loading && !decision) return <div>Loading dashboard...</div>;
+  if (loading && !decision) return <PageContainer title="Overview"><div>Loading dashboard...</div></PageContainer>;
 
   return (
-    <div>
-      <TopBar />
-      {error && <div className="card" style={{ color: 'var(--danger)' }}>{error}</div>}
+    <PageContainer title="Overview">
+      {error && <Card className="text-danger" style={{ marginBottom: '24px' }}>{error}</Card>}
       
       <div className="grid">
         {/* Decision Panel */}
-        <div className="card">
+        <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <h3 style={{ margin: 0 }}>Fused Decision</h3>
             {decision && (
-              <span className={`decision-badge ${getDecisionClass(decision.decision_label)}`}>
+              <Badge variant={getBadgeVariant(decision.decision_label)}>
                 {decision.decision_label}
-              </span>
+              </Badge>
             )}
           </div>
           {decision ? (
             <div>
               <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${decision.decision_score * 100}%` }}></div>
+                <div className="progress-fill" style={{ width: `${decision.decision_score * 100}%`, backgroundColor: 'var(--primary)' }}></div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }} className="text-muted text-mono">
                 <span>Confidence Score</span>
                 <span>{(decision.decision_score * 100).toFixed(1)}%</span>
               </div>
               
               <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="label" style={{ margin: 0 }}>Price Signal</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {decision.price_direction === 'BULLISH' ? <TrendingUp size={14} color="#00ff88" /> : decision.price_direction === 'BEARISH' ? <TrendingDown size={14} color="#ff4d4d" /> : <Minus size={14} />}
+                  <span className="text-xs text-muted text-mono">Price Signal</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="text-mono">
+                    {decision.price_direction === 'BULLISH' ? <TrendingUp size={14} color="var(--success)" /> : decision.price_direction === 'BEARISH' ? <TrendingDown size={14} color="var(--danger)" /> : <Minus size={14} />}
                     {decision.price_direction} ({(decision.price_confidence * 100).toFixed(0)}%)
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="label" style={{ margin: 0 }}>RL Action</span>
-                  <span>{decision.rl_action} ({(decision.rl_confidence * 100).toFixed(0)}%)</span>
+                  <span className="text-xs text-muted text-mono">RL Action</span>
+                  <span className="text-mono">{decision.rl_action} ({(decision.rl_confidence * 100).toFixed(0)}%)</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div style={{ color: 'var(--text-secondary)' }}>No decision data for {symbol} {interval}</div>
+            <div className="text-muted">No decision data for {symbol} {interval}</div>
           )}
-        </div>
+        </Card>
 
         {/* Options Signal Card */}
-        <div className="card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={20} color="var(--accent)" /> Options Intel
+        <Card>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Activity size={20} color="var(--primary)" /> Options Intel
           </h3>
           {options ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="label">Signal</span>
-                <span className={`decision-badge ${getDecisionClass(options.signal_label)}`}>{options.signal_label}</span>
+                <span className="text-xs text-muted text-mono">Signal</span>
+                <Badge variant={getBadgeVariant(options.signal_label)}>{options.signal_label}</Badge>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="label">PCR (Put/Call Ratio)</span>
-                <span style={{ fontWeight: 600 }}>{options.pcr.toFixed(3)}</span>
+                <span className="text-xs text-muted text-mono">PCR (Put/Call Ratio)</span>
+                <span className="text-mono" style={{ fontWeight: 600 }}>{options.pcr.toFixed(3)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="label">Max Pain Strike</span>
-                <span style={{ fontWeight: 600 }}>${options.max_pain_strike.toLocaleString()}</span>
+                <span className="text-xs text-muted text-mono">Max Pain Strike</span>
+                <span className="text-mono" style={{ fontWeight: 600 }}>${options.max_pain_strike.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }} className="text-muted text-mono">
                 <span>C: {options.call_oi_total.toLocaleString()}</span>
                 <span>P: {options.put_oi_total.toLocaleString()}</span>
               </div>
             </div>
           ) : (
-            <div style={{ color: 'var(--text-secondary)' }}>No options data available</div>
+            <div className="text-muted">No options data available</div>
           )}
-        </div>
+        </Card>
 
         {/* Sentiment Meter */}
-        <div className="card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MessageSquare size={20} color="#ffcc00" /> Market Sentiment
+        <Card>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <MessageSquare size={20} color="var(--tertiary)" /> Market Sentiment
           </h3>
           {decision && (
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span className="label">Aggregate Sentiment</span>
-                <span style={{ color: decision.sentiment_label === 'POSITIVE' ? '#00ff88' : decision.sentiment_label === 'NEGATIVE' ? '#ff4d4d' : '#a0a0a0', fontWeight: 700 }}>
+                <span className="text-xs text-muted text-mono">Aggregate Sentiment</span>
+                <span className="text-mono" style={{ color: decision.sentiment_label === 'POSITIVE' ? 'var(--success)' : decision.sentiment_label === 'NEGATIVE' ? 'var(--danger)' : 'var(--muted)', fontWeight: 700 }}>
                   {decision.sentiment_label}
                 </span>
               </div>
-              <div className="progress-bar" style={{ backgroundColor: 'rgba(160,160,160,0.1)' }}>
+              <div className="progress-bar" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
                 <div className="progress-fill" style={{ 
-                  backgroundColor: decision.sentiment_score > 0 ? '#00ff88' : '#ff4d4d',
+                  backgroundColor: decision.sentiment_score > 0 ? 'var(--success)' : 'var(--danger)',
                   marginLeft: decision.sentiment_score > 0 ? '50%' : `${50 - Math.abs(decision.sentiment_score) * 50}%`,
                   width: `${Math.abs(decision.sentiment_score) * 50}%`
                 }}></div>
@@ -148,18 +148,18 @@ const DashboardPage: React.FC = () => {
           )}
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <span className="label">Latest Headlines</span>
+            <span className="text-xs text-muted text-mono">Latest Headlines</span>
             {sentiment.map((s, idx) => (
-              <div key={idx} style={{ padding: '8px', borderLeft: `3px solid ${s.sentiment_label === 'POSITIVE' ? '#00ff88' : s.sentiment_label === 'NEGATIVE' ? '#ff4d4d' : '#a0a0a0'}`, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '0 4px 4px 0' }}>
-                <div style={{ fontSize: '0.85rem' }}>News Item #{s.news_id}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Score: {s.sentiment_score.toFixed(2)} | {s.sentiment_label}</div>
+              <div key={idx} style={{ padding: '8px', borderLeft: `3px solid ${s.sentiment_label === 'POSITIVE' ? 'var(--success)' : s.sentiment_label === 'NEGATIVE' ? 'var(--danger)' : 'var(--muted)'}`, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '0 4px 4px 0' }}>
+                <div style={{ fontSize: '0.85rem' }} className="text-mono">News Item #{s.news_id}</div>
+                <div style={{ fontSize: '0.75rem' }} className="text-muted text-mono">Score: {s.sentiment_score.toFixed(2)} | {s.sentiment_label}</div>
               </div>
             ))}
-            {sentiment.length === 0 && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No news scored yet</div>}
+            {sentiment.length === 0 && <div style={{ fontSize: '0.85rem' }} className="text-muted">No news scored yet</div>}
           </div>
-        </div>
+        </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

@@ -1,0 +1,311 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { 
+  getOrchestrationRuns, 
+  getOrchestrationRun, 
+  OrchestrationRun 
+} from '../api/orchestrationApi';
+import PageContainer from '../components/layout/PageContainer';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import { 
+  History, 
+  RefreshCw, 
+  Filter, 
+  ChevronRight, 
+  Clock, 
+  Database, 
+  Cpu, 
+  Zap, 
+  RotateCcw,
+  AlertCircle
+} from 'lucide-react';
+
+const SummaryRenderer: React.FC<{ data: any }> = ({ data }) => {
+  if (!data || typeof data !== 'object') return <span>{String(data)}</span>;
+
+  if (Array.isArray(data)) {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+        {data.map((item, i) => (
+          <span key={i} className="glass-panel text-xs text-mono" style={{ padding: '2px 6px', borderRadius: '4px' }}>
+            {typeof item === 'object' ? <SummaryRenderer data={item} /> : String(item)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {Object.entries(data).map(([key, value]) => (
+        <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div className="text-xs text-muted text-mono uppercase">{key.replace(/_/g, ' ')}</div>
+          <div style={{ paddingLeft: '8px', borderLeft: '1px solid var(--border-subtle)' }}>
+            {typeof value === 'object' ? <SummaryRenderer data={value} /> : <span className="text-sm text-mono">{String(value)}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RunsPage: React.FC = () => {
+  const [runs, setRuns] = useState<OrchestrationRun[]>([]);
+  const [selectedRun, setSelectedRun] = useState<OrchestrationRun | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [filter, setFilter] = useState<string>('');
+  const [limit, setLimit] = useState<number>(50);
+  const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const fetchRuns = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getOrchestrationRuns(filter || undefined, limit);
+      setRuns(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch runs');
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, limit]);
+
+  useEffect(() => {
+    fetchRuns();
+  }, [fetchRuns]);
+
+  const handleSelectRun = async (run: OrchestrationRun) => {
+    setSelectedRun(run);
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const fullRun = await getOrchestrationRun(run.id);
+      setSelectedRun(fullRun);
+    } catch (err: any) {
+      setDetailError(err.message || 'Failed to fetch run details');
+      console.error('Failed to fetch run detail', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const getRunTypeIcon = (type: string) => {
+    switch (type) {
+      case 'train': return <Database size={16} />;
+      case 'inference': return <Cpu size={16} />;
+      case 'execution': return <Zap size={16} />;
+      case 'cycle': return <RotateCcw size={16} />;
+      default: return <History size={16} />;
+    }
+  };
+
+  return (
+    <PageContainer title="Orchestration Runs">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 180px)' }}>
+        
+        {/* Toolbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: 'var(--radius-md)' }}>
+              <Filter size={16} className="text-muted" />
+              <select 
+                className="input-void" 
+                style={{ border: 'none', padding: '4px', background: 'transparent' }}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                aria-label="Filter by type"
+              >
+                <option value="">ALL TYPES</option>
+                <option value="train">TRAIN</option>
+                <option value="inference">INFERENCE</option>
+                <option value="execution">EXECUTION</option>
+                <option value="cycle">CYCLE</option>
+              </select>
+            </div>
+            <select 
+              className="input-void"
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              style={{ width: '80px' }}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <Button variant="outline" onClick={fetchRuns} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span style={{ marginLeft: '8px' }}>Refresh</span>
+          </Button>
+        </div>
+
+        {error && (
+          <div className="glass-panel text-danger" style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
+
+        {/* Main Split Layout */}
+        <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>
+          
+          {/* Left: Run List */}
+          <Card style={{ flex: 2, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div className="table-container" style={{ flex: 1, overflow: 'auto' }}>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-card)' }}>
+                  <tr>
+                    <th>ID</th>
+                    <th>TYPE</th>
+                    <th>STATUS</th>
+                    <th>UNIVERSE</th>
+                    <th>COUNTS</th>
+                    <th>CREATED</th>
+                    <th style={{ width: '40px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runs.map(run => (
+                    <tr 
+                      key={run.id} 
+                      onClick={() => handleSelectRun(run)}
+                      data-testid={`run-row-${run.id}`}
+                      style={{ 
+                        cursor: 'pointer',
+                        backgroundColor: selectedRun?.id === run.id ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                        borderLeft: selectedRun?.id === run.id ? '3px solid var(--primary)' : '3px solid transparent'
+                      }}
+                    >
+                      <td className="text-mono text-xs">{run.id}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="text-muted">{getRunTypeIcon(run.run_type)}</span>
+                          <span className="text-xs text-mono uppercase">{run.run_type}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge variant={run.status === 'completed' || run.status === 'success' ? 'success' : run.status === 'failed' ? 'danger' : 'muted'}>
+                          {run.status.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="text-xs text-mono">
+                          {run.mode} <span className="text-muted">/</span> {run.interval}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <Badge variant="primary" title="Ready">{run.ready_symbols_count}</Badge>
+                          <Badge variant="success" title="Success">{run.success_count}</Badge>
+                          {run.failed_count > 0 && <Badge variant="danger" title="Failed">{run.failed_count}</Badge>}
+                        </div>
+                      </td>
+                      <td className="text-xs text-muted">
+                        {new Date(run.created_ts).toLocaleString(undefined, { 
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                        })}
+                      </td>
+                      <td><ChevronRight size={14} className="text-muted" /></td>
+                    </tr>
+                  ))}
+                  {!loading && runs.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center text-muted py-12">
+                        No orchestration runs found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Right: Detail Panel */}
+          <Card style={{ flex: 1.5, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {!selectedRun ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                <History size={48} strokeWidth={1} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                <p>Select a run to view details</p>
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      Run #{selectedRun.id}
+                    </h3>
+                    <div className="text-xs text-muted text-mono uppercase" style={{ marginTop: '4px' }}>
+                      {selectedRun.run_type} | {selectedRun.mode} | {selectedRun.interval}
+                    </div>
+                  </div>
+                  <Badge variant={selectedRun.status === 'completed' || selectedRun.status === 'success' ? 'success' : selectedRun.status === 'failed' ? 'danger' : 'muted'}>
+                    {selectedRun.status.toUpperCase()}
+                  </Badge>
+                </div>
+
+                {selectedRun.reason && (
+                  <div className="glass-panel" style={{ padding: '12px', borderLeft: '4px solid var(--danger)' }}>
+                    <div className="text-xs text-muted text-mono" style={{ marginBottom: '4px' }}>FAILURE REASON</div>
+                    <div className="text-sm">{selectedRun.reason}</div>
+                  </div>
+                )}
+
+                <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="glass-panel" style={{ padding: '12px' }}>
+                    <div className="text-xs text-muted text-mono">SELECTED SYMBOLS</div>
+                    <div className="text-xl text-mono">{selectedRun.selected_symbols_count}</div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '12px' }}>
+                    <div className="text-xs text-muted text-mono">READY SYMBOLS</div>
+                    <div className="text-xl text-mono">{selectedRun.ready_symbols_count}</div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '12px' }}>
+                    <div className="text-xs text-muted text-mono">SUCCESS / SKIPPED</div>
+                    <div className="text-xl text-mono" style={{ color: 'var(--success)' }}>
+                      {selectedRun.success_count} / {selectedRun.skipped_count}
+                    </div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '12px' }}>
+                    <div className="text-xs text-muted text-mono">FAILED</div>
+                    <div className="text-xl text-mono" style={{ color: selectedRun.failed_count > 0 ? 'var(--danger)' : 'var(--text-main)' }}>
+                      {selectedRun.failed_count}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted text-mono" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={14} /> EXECUTION SUMMARY
+                  </div>
+                  <div className="glass-panel" style={{ padding: '16px' }}>
+                    {detailLoading ? (
+                      <div className="text-center py-8"><RefreshCw className="animate-spin text-muted" /></div>
+                    ) : (
+                      <SummaryRenderer data={selectedRun.summary} />
+                    )}
+                  </div>
+                </div>
+
+                {detailError && (
+                  <div className="glass-panel text-danger" style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <AlertCircle size={20} />
+                    {detailError}
+                  </div>
+                )}
+
+                <div className="text-xs text-muted text-mono" style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+                  CREATED AT: {new Date(selectedRun.created_ts).toISOString()}
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+    </PageContainer>
+  );
+};
+
+export default RunsPage;

@@ -10,7 +10,7 @@ interface SymbolContextType {
 const SymbolContext = createContext<SymbolContextType | undefined>(undefined);
 
 export const SymbolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [symbol, setSymbol] = useState('BTCUSDT');
+  const [symbol, setSymbol] = useState('NIFTY');
   const [interval, setInterval] = useState('5m');
 
   return (

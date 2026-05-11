@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { getRecentAlerts, AlertDTO } from '../api/alertsApi';
 import { Bell, Filter, Clock, Tag } from 'lucide-react';
+import PageContainer from '../components/layout/PageContainer';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 
 const AlertsPage: React.FC = () => {
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
@@ -32,56 +35,48 @@ const AlertsPage: React.FC = () => {
   );
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h2 style={{ margin: 0 }}>System Alerts</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-card)', padding: '4px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <Filter size={16} color="var(--text-secondary)" />
+    <PageContainer title="System Alerts">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '6px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', width: '300px' }}>
+          <Filter size={16} className="text-muted" />
           <input 
             type="text" 
             placeholder="Filter alerts..." 
             value={filter} 
             onChange={(e) => setFilter(e.target.value)}
-            style={{ border: 'none', background: 'transparent', padding: '4px' }}
+            style={{ border: 'none', background: 'transparent', padding: '4px', width: '100%' }}
           />
         </div>
       </div>
 
-      {error && <div className="card" style={{ color: 'var(--danger)' }}>{error}</div>}
+      {error && <Card className="text-danger" style={{ marginBottom: '24px' }}>{error}</Card>}
       
-      <div className="card" style={{ padding: 0 }}>
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
         {loading && alerts.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading alerts...</div>
+          <div style={{ padding: '48px', textAlign: 'center' }} className="text-muted">Loading signals from archive...</div>
         ) : filteredAlerts.length > 0 ? (
           <div className="alerts-list">
             {filteredAlerts.map((alert) => (
-              <div key={alert.id} className="alert-item">
+              <div key={alert.id} className="alert-item" style={{ borderBottom: '1px solid var(--border)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
-                  <div className="alert-meta" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div className="alert-meta" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="text-xs text-muted text-mono">
                       <Tag size={12} /> {alert.symbol} ({alert.interval})
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="text-xs text-muted text-mono">
                       <Clock size={12} /> {new Date(alert.timestamp).toLocaleString()}
                     </span>
-                    <span style={{ 
-                      padding: '2px 8px', 
-                      borderRadius: '4px', 
-                      fontSize: '0.7rem', 
-                      fontWeight: 700,
-                      backgroundColor: alert.alert_type.includes('HIGH_CONFIDENCE') ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 77, 77, 0.1)',
-                      color: alert.alert_type.includes('HIGH_CONFIDENCE') ? '#00ff88' : '#ff4d4d'
-                    }}>
+                    <Badge variant={alert.alert_type.includes('HIGH_CONFIDENCE') ? 'success' : 'danger'}>
                       {alert.alert_type}
-                    </span>
+                    </Badge>
                   </div>
-                  <div className="alert-message" style={{ marginTop: '8px', fontSize: '1rem' }}>
+                  <div className="alert-message" style={{ fontSize: '1rem', fontWeight: 500 }}>
                     {alert.message}
                   </div>
                 </div>
-                <div style={{ paddingLeft: '24px', textAlign: 'right' }}>
-                  <div className="label">Importance</div>
-                  <div style={{ fontWeight: 700, color: alert.importance > 0.8 ? 'var(--accent)' : 'var(--text-primary)' }}>
+                <div style={{ paddingLeft: '32px', textAlign: 'right', minWidth: '100px' }}>
+                  <div className="text-xs text-muted text-mono">IMPORTANCE</div>
+                  <div className="text-mono" style={{ fontSize: '1.25rem', fontWeight: 700, color: alert.importance > 0.8 ? 'var(--primary)' : 'var(--foreground)' }}>
                     {(alert.importance * 100).toFixed(0)}
                   </div>
                 </div>
@@ -89,13 +84,13 @@ const AlertsPage: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <Bell size={48} style={{ opacity: 0.1, marginBottom: '16px' }} />
-            <p>No alerts matching your criteria</p>
+          <div style={{ padding: '64px', textAlign: 'center' }} className="text-muted">
+            <Bell size={48} style={{ opacity: 0.1, marginBottom: '16px', margin: '0 auto' }} />
+            <p>No signals detected matching current filters</p>
           </div>
         )}
-      </div>
-    </div>
+      </Card>
+    </PageContainer>
   );
 };
 

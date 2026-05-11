@@ -39,7 +39,7 @@ describe('BacktestPage', () => {
       </SymbolProvider>
     );
 
-    fireEvent.click(screen.getByText('Run Backtest'));
+    fireEvent.click(screen.getByText(/Execute Strategy/i));
 
     await waitFor(() => {
       expect(screen.getByText('$12,000')).toBeInTheDocument();

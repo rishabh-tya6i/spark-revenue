@@ -1,51 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SymbolProvider } from './context/SymbolContext';
+import AppShell from './components/layout/AppShell';
+import OverviewPage from './pages/OverviewPage';
+import OperationsPage from './pages/OperationsPage';
+import ExecutionPage from './pages/ExecutionPage';
+import RunsPage from './pages/RunsPage';
 import DashboardPage from './pages/DashboardPage';
 import BacktestPage from './pages/BacktestPage';
 import AlertsPage from './pages/AlertsPage';
-import { Layout, LineChart, Bell, Activity } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'backtest' | 'alerts'>('dashboard');
-
   return (
     <SymbolProvider>
-      <div className="app-container">
-        <nav className="sidebar">
-          <div className="logo">
-            <Activity className="logo-icon" size={32} color="#00ff88" />
-            <span>Spark Revenue</span>
-          </div>
-          <div className="nav-items">
-            <button 
-              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
-            >
-              <Layout size={20} />
-              <span>Dashboard</span>
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'backtest' ? 'active' : ''}`}
-              onClick={() => setActiveTab('backtest')}
-            >
-              <LineChart size={20} />
-              <span>Backtest</span>
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('alerts')}
-            >
-              <Bell size={20} />
-              <span>Alerts</span>
-            </button>
-          </div>
-        </nav>
-        <main className="content">
-          {activeTab === 'dashboard' && <DashboardPage />}
-          {activeTab === 'backtest' && <BacktestPage />}
-          {activeTab === 'alerts' && <AlertsPage />}
-        </main>
-      </div>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/operations" element={<OperationsPage />} />
+            <Route path="/execution" element={<ExecutionPage />} />
+            <Route path="/runs" element={<RunsPage />} />
+            <Route path="/signals" element={<DashboardPage />} />
+            <Route path="/backtest" element={<BacktestPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/" element={<Navigate to="/overview" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </SymbolProvider>
   );
 };
