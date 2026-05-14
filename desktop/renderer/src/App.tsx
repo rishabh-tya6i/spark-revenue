@@ -9,6 +9,7 @@ import RunsPage from './pages/RunsPage';
 import DashboardPage from './pages/DashboardPage';
 import BacktestPage from './pages/BacktestPage';
 import AlertsPage from './pages/AlertsPage';
+import SetupPage from './pages/SetupPage';
 
 const App: React.FC = () => {
   return (
@@ -17,9 +18,10 @@ const App: React.FC = () => {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/overview" element={<OverviewPage />} />
-            <Route path="/operations" element={<OperationsPage />} />
-            <Route path="/execution" element={<ExecutionPage />} />
-            <Route path="/runs" element={<RunsPage />} />
+          <Route path="/operations" element={<OperationsPage />} />
+          <Route path="/setup" element={<SetupPage />} />
+          <Route path="/execution" element={<ExecutionPage />} />
+          <Route path="/runs" element={<RunsPage />} />
             <Route path="/signals" element={<DashboardPage />} />
             <Route path="/backtest" element={<BacktestPage />} />
             <Route path="/alerts" element={<AlertsPage />} />

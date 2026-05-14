@@ -183,21 +183,32 @@ class InstrumentService:
         
         # Base query for active instruments
         query = self.db.query(InstrumentMaster).filter(InstrumentMaster.is_active == 1)
+
+        def _norm(col):
+            # Normalize common Upstox variants: "NIFTY 50", "NIFTY_50", "NIFTY50"
+            return sa.func.replace(sa.func.replace(sa.func.upper(col), " ", ""), "_", "")
         
         # 1. Handle explicit common aliases
         if symbol_upper == "NIFTY":
             # Upstox index names are typically "NIFTY 50"
             res = query.filter(
                 InstrumentMaster.segment == "NSE_INDEX",
-                (InstrumentMaster.trading_symbol == "NIFTY 50") | 
-                (InstrumentMaster.trading_symbol == "NIFTY_50") | 
-                (InstrumentMaster.name == "NIFTY 50")
+                InstrumentMaster.instrument_type == "INDEX",
+                (
+                    (_norm(InstrumentMaster.trading_symbol) == "NIFTY50")
+                    | (_norm(InstrumentMaster.name) == "NIFTY50")
+                    | (sa.func.upper(InstrumentMaster.trading_symbol) == "NIFTY")
+                    | (sa.func.upper(InstrumentMaster.name) == "NIFTY")
+                ),
             ).first()
         elif symbol_upper == "SENSEX":
             res = query.filter(
                 InstrumentMaster.segment == "BSE_INDEX",
-                (InstrumentMaster.trading_symbol == "SENSEX") | 
-                (InstrumentMaster.name == "SENSEX")
+                InstrumentMaster.instrument_type == "INDEX",
+                (
+                    (_norm(InstrumentMaster.trading_symbol) == "SENSEX")
+                    | (_norm(InstrumentMaster.name) == "SENSEX")
+                ),
             ).first()
         else:
             # 2. Generic lookup: Exact match first (case-insensitive)

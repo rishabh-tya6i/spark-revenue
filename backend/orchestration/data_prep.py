@@ -5,6 +5,7 @@ import logging
 from ..db import SessionLocal
 from ..instruments.service import InstrumentService
 from ..ingestion.upstox_client import UpstoxMarketDataClient
+from ..ingestion.binance_client import BinanceClient
 from ..ingestion.ohlc_ingestor import OhlcIngestor
 from ..feature_store.service import FeatureStore
 from .universe import get_training_universe
@@ -12,6 +13,17 @@ from .utils import get_prepare_window, get_prepare_interval
 from .trainability import get_trainable_symbols
 
 logger = logging.getLogger(__name__)
+
+def _select_market_data_client(db_session, symbol: str):
+    """
+    Selects a market data client based on symbol convention.
+    - Binance for common crypto quote pairs like BTCUSDT.
+    - Upstox otherwise (requires instrument resolution).
+    """
+    sym = (symbol or "").upper().strip()
+    if sym.endswith("USDT") or sym.endswith("BUSD") or sym.endswith("USDC"):
+        return BinanceClient()
+    return UpstoxMarketDataClient(db_session=db_session)
 
 def sync_instruments_core(segments: Optional[List[str]] = None) -> int:
     """
@@ -37,12 +49,10 @@ def backfill_ohlc_for_universe_core(
     status = {}
     
     with SessionLocal() as db:
-        # UpstoxMarketDataClient handles symbol resolution internally via InstrumentService
-        client = UpstoxMarketDataClient(db_session=db)
-        ingestor = OhlcIngestor(client=client, session_factory=SessionLocal)
-        
         for symbol in symbols:
             try:
+                client = _select_market_data_client(db_session=db, symbol=symbol)
+                ingestor = OhlcIngestor(client=client, session_factory=SessionLocal)
                 ingestor.ingest_historical(
                     symbol=symbol,
                     start=start,
@@ -72,13 +82,13 @@ def backfill_features_for_universe_core(
     
     for symbol in symbols:
         try:
-            feature_store.compute_and_store_price_features(
+            count = feature_store.compute_and_store_price_features(
                 symbol=symbol,
                 start=start,
                 end=end,
                 interval=interval
             )
-            status[symbol] = "ok"
+            status[symbol] = "ok" if count > 0 else "no_ohlc"
         except Exception as e:
             logger.error(f"Feature backfill failed for {symbol}: {str(e)}")
             status[symbol] = f"error: {str(e)}"

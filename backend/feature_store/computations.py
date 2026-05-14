@@ -32,7 +32,9 @@ def compute_price_features(ohlc_bars: List[OhlcBarIn], interval: str) -> List[Pr
         avg_price = (bar.high + bar.low + bar.close) / 3.0
         cum_pv += avg_price * bar.volume
         cum_v += bar.volume
-        vwap = cum_pv / cum_v if cum_v > 0 else None
+        # Some instruments (e.g. cash indices) may have volume=0 for all bars.
+        # Keep vwap non-null so downstream model joins/dropna don't wipe the dataset.
+        vwap = (cum_pv / cum_v) if cum_v > 0 else avg_price
         
         feature = PriceFeatureIn(
             symbol=bar.symbol,

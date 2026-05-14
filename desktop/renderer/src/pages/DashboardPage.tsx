@@ -44,10 +44,29 @@ const DashboardPage: React.FC = () => {
     return () => clearInterval(poll);
   }, [fetchData]);
 
+  const asNumber = (value: any): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  const formatPercent = (value: any, digits: number = 0): string => {
+    const num = asNumber(value);
+    if (num === null) return 'N/A';
+    return `${(num * 100).toFixed(digits)}%`;
+  };
+
+  const formatFixed = (value: any, digits: number = 2): string => {
+    const num = asNumber(value);
+    return num === null ? 'N/A' : num.toFixed(digits);
+  };
+
   const renderDecisionSection = () => {
     if (!decision) {
       return <EmptyState message={`No fused decision available for ${symbol} ${interval}`} />;
     }
+
+    const decisionScore = asNumber(decision.decision_score) ?? 0;
 
     return (
       <div className="flex-col gap-md">
@@ -59,10 +78,10 @@ const DashboardPage: React.FC = () => {
         <div className="flex-col gap-sm">
           <div className="flex justify-between text-muted text-mono uppercase" style={{ fontSize: '0.85rem' }}>
             <span>Confidence Score</span>
-            <span>{(decision.decision_score * 100).toFixed(1)}%</span>
+            <span>{formatPercent(decision.decision_score, 1)}</span>
           </div>
           <div className="progress-bar" style={{ height: '6px' }}>
-            <div className="progress-fill" style={{ width: `${decision.decision_score * 100}%`, backgroundColor: 'var(--primary)' }}></div>
+            <div className="progress-fill" style={{ width: `${decisionScore * 100}%`, backgroundColor: 'var(--primary)' }}></div>
           </div>
         </div>
 
@@ -76,9 +95,9 @@ const DashboardPage: React.FC = () => {
               </div>
             } 
           />
-          <KeyValueItem label="Price Confidence" value={`${(decision.price_confidence * 100).toFixed(0)}%`} />
+          <KeyValueItem label="Price Confidence" value={formatPercent(decision.price_confidence, 0)} />
           <KeyValueItem label="RL Action" value={decision.rl_action} />
-          <KeyValueItem label="RL Confidence" value={`${(decision.rl_confidence * 100).toFixed(0)}%`} />
+          <KeyValueItem label="RL Confidence" value={formatPercent(decision.rl_confidence, 0)} />
         </KeyValueGrid>
       </div>
     );
@@ -97,16 +116,17 @@ const DashboardPage: React.FC = () => {
         </div>
 
         <KeyValueGrid>
-          <KeyValueItem label="PCR (PUT/CALL)" value={options.pcr.toFixed(3)} />
-          <KeyValueItem label="MAX PAIN STRIKE" value={`$${options.max_pain_strike.toLocaleString()}`} />
-          <KeyValueItem label="CALL OI TOTAL" value={options.call_oi_total.toLocaleString()} />
-          <KeyValueItem label="PUT OI TOTAL" value={options.put_oi_total.toLocaleString()} />
+          <KeyValueItem label="PCR (PUT/CALL)" value={formatFixed(options.pcr, 3)} />
+          <KeyValueItem label="MAX PAIN STRIKE" value={asNumber(options.max_pain_strike) === null ? 'N/A' : `$${options.max_pain_strike.toLocaleString()}`} />
+          <KeyValueItem label="CALL OI TOTAL" value={asNumber(options.call_oi_total) === null ? 'N/A' : options.call_oi_total.toLocaleString()} />
+          <KeyValueItem label="PUT OI TOTAL" value={asNumber(options.put_oi_total) === null ? 'N/A' : options.put_oi_total.toLocaleString()} />
         </KeyValueGrid>
       </div>
     );
   };
 
   const renderSentimentSection = () => {
+    const sentimentScore = decision ? asNumber(decision.sentiment_score) : null;
     return (
       <div className="flex-col gap-md">
         {decision && (
@@ -119,13 +139,13 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="progress-bar" style={{ backgroundColor: 'rgba(255,255,255,0.05)', height: '8px' }}>
               <div className="progress-fill" style={{ 
-                backgroundColor: decision.sentiment_score > 0 ? 'var(--success)' : 'var(--danger)',
-                marginLeft: decision.sentiment_score > 0 ? '50%' : `${50 - Math.abs(decision.sentiment_score) * 50}%`,
-                width: `${Math.abs(decision.sentiment_score) * 50}%`
+                backgroundColor: (sentimentScore ?? 0) > 0 ? 'var(--success)' : 'var(--danger)',
+                marginLeft: (sentimentScore ?? 0) > 0 ? '50%' : `${50 - Math.abs(sentimentScore ?? 0) * 50}%`,
+                width: `${Math.abs(sentimentScore ?? 0) * 50}%`
               }}></div>
             </div>
             <div className="text-xs text-muted text-mono" style={{ marginTop: '8px', textAlign: 'center' }}>
-              SCORE: {decision.sentiment_score.toFixed(2)}
+              SCORE: {formatFixed(decision.sentiment_score, 2)}
             </div>
           </div>
         )}
@@ -141,7 +161,7 @@ const DashboardPage: React.FC = () => {
               }}>
                 <div style={{ fontSize: '0.85rem' }} className="text-mono mb-xs">{`NEWS ITEM #${s.news_id}`}</div>
                 <div style={{ fontSize: '0.75rem' }} className="text-muted text-mono">
-                  {`SCORE: ${s.sentiment_score.toFixed(2)} | ${s.sentiment_label}`}
+                  {`SCORE: ${formatFixed(s.sentiment_score, 2)} | ${s.sentiment_label}`}
                 </div>
               </div>
             ))

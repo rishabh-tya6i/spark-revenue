@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Layout, LineChart, Bell, Activity, Settings, Zap, Send, History } from 'lucide-react';
+import { Layout, LineChart, Bell, Activity, Settings, Zap, Send, History, Wrench } from 'lucide-react';
 
 const SidebarNav: React.FC = () => {
   return (
@@ -25,6 +25,14 @@ const SidebarNav: React.FC = () => {
         >
           <Settings size={20} />
           <span>Operations</span>
+        </NavLink>
+
+        <NavLink 
+          to="/setup" 
+          className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+        >
+          <Wrench size={20} />
+          <span>Setup</span>
         </NavLink>
 
         <NavLink 

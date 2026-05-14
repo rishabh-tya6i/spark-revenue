@@ -11,7 +11,13 @@ const client = axios.create({
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const status = error?.response?.status;
+    // Treat "not found" as a normal state for optional widgets (e.g. options signals).
+    if (status === 404) {
+      console.debug('API 404:', error.response?.data || error.message);
+    } else {
+      console.error('API Error:', error.response?.data || error.message);
+    }
     return Promise.reject(error);
   }
 );

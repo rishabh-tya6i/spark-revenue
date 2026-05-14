@@ -6,6 +6,7 @@ import mlflow
 import os
 import logging
 import numpy as np
+from contextlib import nullcontext
 from .data import build_price_model_dataset
 from .model import create_model, save_model
 from ..db import SessionLocal
@@ -52,17 +53,26 @@ def train_price_model(symbol: str, interval: str, epochs: int = 10, batch_size: 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     # 5. MLflow Tracking
-    mlflow.set_experiment("PricePrediction_LSTM")
-    with mlflow.start_run():
-        mlflow.log_params({
-            "symbol": symbol,
-            "interval": interval,
-            "input_window": settings.PRICE_MODEL_INPUT_WINDOW,
-            "prediction_horizon": settings.PRICE_MODEL_PREDICTION_HORIZON,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "num_features": input_size
-        })
+    mlflow_enabled = True
+    try:
+        mlflow.set_experiment("PricePrediction_LSTM")
+        run_ctx = mlflow.start_run()
+    except Exception as e:
+        mlflow_enabled = False
+        run_ctx = nullcontext()
+        logger.warning(f"MLflow tracking disabled for this run: {e}")
+
+    with run_ctx:
+        if mlflow_enabled:
+            mlflow.log_params({
+                "symbol": symbol,
+                "interval": interval,
+                "input_window": settings.PRICE_MODEL_INPUT_WINDOW,
+                "prediction_horizon": settings.PRICE_MODEL_PREDICTION_HORIZON,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "num_features": input_size
+            })
         
         best_val_loss = float('inf')
         model_path = os.path.join(settings.PRICE_MODEL_DIR, f"{symbol}_{interval}_latest.pt")
@@ -99,14 +109,16 @@ def train_price_model(symbol: str, interval: str, epochs: int = 10, batch_size: 
             val_acc = correct / total if total > 0 else 0
             
             logger.info(f"Epoch {epoch+1}/{epochs} - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, Val Acc: {val_acc:.4f}")
-            mlflow.log_metric("train_loss", avg_train_loss, step=epoch)
-            mlflow.log_metric("val_loss", avg_val_loss, step=epoch)
-            mlflow.log_metric("val_accuracy", val_acc, step=epoch)
+            if mlflow_enabled:
+                mlflow.log_metric("train_loss", avg_train_loss, step=epoch)
+                mlflow.log_metric("val_loss", avg_val_loss, step=epoch)
+                mlflow.log_metric("val_accuracy", val_acc, step=epoch)
             
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 save_model(model, model_path)
                 logger.info(f"Best model saved to {model_path}")
-                mlflow.log_artifact(model_path)
+                if mlflow_enabled:
+                    mlflow.log_artifact(model_path)
 
     return model_path

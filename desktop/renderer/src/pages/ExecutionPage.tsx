@@ -136,6 +136,11 @@ const ExecutionPage: React.FC = () => {
     </div>
   ) : null;
 
+  const formatScore = (score: any) => {
+    const num = typeof score === 'number' ? score : Number(score);
+    return Number.isFinite(num) ? num.toFixed(2) : 'N/A';
+  };
+
   return (
     <PageContainer title="Execution Management">
       <div className="flex-col gap-lg">
@@ -163,7 +168,7 @@ const ExecutionPage: React.FC = () => {
                       <span style={{ color: d.decision_label === 'BUY' ? 'var(--success)' : d.decision_label === 'SELL' ? 'var(--danger)' : 'var(--muted)' }}>
                         {d.decision_label}
                       </span>
-                      <span className="text-xs text-muted" style={{ marginLeft: '8px' }}>({d.decision_score.toFixed(2)})</span>
+                      <span className="text-xs text-muted" style={{ marginLeft: '8px' }}>({formatScore(d.decision_score)})</span>
                     </td>
                     <td><Badge variant={d.rl_action === 'HOLD' ? 'muted' : 'primary'}>{d.rl_action}</Badge></td>
                     <td><StatusBadge type="readiness" status={d.ready} label={d.ready ? 'READY' : 'NOT READY'} /></td>

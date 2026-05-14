@@ -231,6 +231,11 @@ export interface TrainParams {
   episodes?: number;
 }
 
+export const prepareTrainingData = async (params: TrainParams): Promise<any> => {
+  const response = await client.post('/orchestration/prepare-training-data', null, { params });
+  return response.data;
+};
+
 export const runTrainTrainable = async (params: TrainParams): Promise<any> => {
   const response = await client.post('/orchestration/train-trainable', null, { params });
   return response.data;

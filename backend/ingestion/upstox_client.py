@@ -4,6 +4,7 @@ from urllib.parse import quote
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
 from backend.config import settings
+from backend.settings.token_store import get_upstox_token
 from .schemas import BaseMarketDataClient, OhlcBarIn
 from ..instruments.service import InstrumentService
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class UpstoxHistoricalClient:
     def __init__(self, access_token: Optional[str] = None):
-        self.access_token = access_token or settings.UPSTOX_ACCESS_TOKEN
+        self.access_token = access_token or get_upstox_token()
         if not self.access_token:
             raise ValueError("UPSTOX_ACCESS_TOKEN is missing. Please set it in .env or config.")
         

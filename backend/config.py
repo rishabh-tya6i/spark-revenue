@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     # App Settings
     APP_NAME: str = "Spark Revenue AI Trading OS"
     DEBUG: bool = False
+    # CORS
+    # Use "*" to allow any origin (useful for local dev / Electron).
+    # Otherwise provide a comma-separated list of allowed origins.
+    CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
 
     # Database Settings
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/trading_db"

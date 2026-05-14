@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import List, Optional
 import redis
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from ..db import PriceFeature, OhlcBar, SessionLocal
 from ..config import settings
@@ -34,6 +35,8 @@ class FeatureStore:
         logger.info(f"Computing features for {symbol} ({interval}) from {start} to {end}")
         
         with self.session_factory() as session:
+            dialect_name = session.get_bind().dialect.name
+
             # 1. Fetch OHLC bars
             bars = session.query(OhlcBar).filter(
                 OhlcBar.symbol == symbol,
@@ -55,18 +58,46 @@ class FeatureStore:
             # 4. Upsert into database
             count = 0
             for feat in feature_list:
-                stmt = insert(PriceFeature).values(**feat.model_dump())
-                
-                # PostgreSQL on conflict update
-                stmt = stmt.on_conflict_do_update(
-                    constraint='uq_symbol_ts_interval',
-                    set_={
-                        'rsi_14': feat.rsi_14,
-                        'vwap': feat.vwap,
-                        'ema_short': feat.ema_short,
-                        'ema_long': feat.ema_long
-                    }
-                )
+                values = feat.model_dump()
+
+                if dialect_name == "postgresql":
+                    stmt = pg_insert(PriceFeature).values(**values).on_conflict_do_update(
+                        constraint="uq_symbol_ts_interval",
+                        set_={
+                            "rsi_14": feat.rsi_14,
+                            "vwap": feat.vwap,
+                            "ema_short": feat.ema_short,
+                            "ema_long": feat.ema_long,
+                        },
+                    )
+                elif dialect_name == "sqlite":
+                    stmt = sqlite_insert(PriceFeature).values(**values).on_conflict_do_update(
+                        index_elements=["symbol", "ts", "interval"],
+                        set_={
+                            "rsi_14": feat.rsi_14,
+                            "vwap": feat.vwap,
+                            "ema_short": feat.ema_short,
+                            "ema_long": feat.ema_long,
+                        },
+                    )
+                else:
+                    # Conservative fallback: merge via ORM (may be slower but portable).
+                    existing = session.query(PriceFeature).filter(
+                        PriceFeature.symbol == feat.symbol,
+                        PriceFeature.ts == feat.ts,
+                        PriceFeature.interval == feat.interval,
+                    ).one_or_none()
+                    if existing:
+                        existing.rsi_14 = feat.rsi_14
+                        existing.vwap = feat.vwap
+                        existing.ema_short = feat.ema_short
+                        existing.ema_long = feat.ema_long
+                        count += 1
+                        continue
+                    session.add(PriceFeature(**values))
+                    count += 1
+                    continue
+
                 session.execute(stmt)
                 count += 1
             
